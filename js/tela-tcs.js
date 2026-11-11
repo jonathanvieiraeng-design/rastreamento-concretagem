@@ -40,7 +40,7 @@ export async function telaTcs(id) {
 
   function campoTc(c, campo, rotulo) {
     const inp = el('input', {
-      class: 'campo campo-tc', value: fmtTc(c[campo]), autocomplete: 'off', autocorrect: 'off', spellcheck: 'false',
+      class: 'campo campo-tc', value: fmtTc(c[campo]), inputmode: 'decimal', autocomplete: 'off', autocorrect: 'off', spellcheck: 'false',
       enterkeyhint: 'next', 'aria-label': `${rotulo} do caminhão ${c.item}`,
     });
     inp.addEventListener('input', () => {

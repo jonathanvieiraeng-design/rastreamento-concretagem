@@ -56,9 +56,9 @@ export function criarGravador(caminhoes) {
 // Campos editáveis de um caminhão. aoMudar() é chamado quando NF, Vol, HI ou HT mudam.
 export function camposCaminhao(c, g, aoMudar) {
   const entrada = (props) => el('input', { class: 'campo', autocomplete: 'off', autocorrect: 'off', spellcheck: 'false', ...props });
-  const cNf = entrada({ value: c.nf ?? '', enterkeyhint: 'next', 'aria-label': 'NF' });
+  const cNf = entrada({ value: c.nf ?? '', inputmode: 'numeric', enterkeyhint: 'next', 'aria-label': 'NF' });
   const cBet = entrada({ value: c.bet ?? '', enterkeyhint: 'next', 'aria-label': 'Betoneira' });
-  const cVol = entrada({ value: fmtNumero(c.vol), enterkeyhint: 'done', 'aria-label': 'Volume' });
+  const cVol = entrada({ value: fmtNumero(c.vol), inputmode: 'decimal', enterkeyhint: 'done', 'aria-label': 'Volume' });
 
   cNf.addEventListener('input', () => {
     const s = cNf.value.replace(/\D/g, '');
