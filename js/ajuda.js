@@ -41,7 +41,7 @@ const CONTEUDO = [
         'Assinaturas: vêm do último MR; pode deixar em branco e preencher depois.',
         'Toque em "Criar MR".',
       ] },
-      { tipo: 'p', texto: 'Para corrigir o cabeçalho depois, use o lápis no topo do MR. Para excluir um MR, abra o cabeçalho, toque em "Excluir MR" e digite EXCLUIR.' },
+      { tipo: 'p', texto: 'Para corrigir o cabeçalho depois, use o lápis no topo do MR. Para excluir um MR e começar de novo, toque na lixeira do cartão dele na tela inicial (ou em "Excluir MR" no cabeçalho) e digite EXCLUIR. Isso apaga o MR, os caminhões, os desenhos e a prancha dele; não dá para desfazer.' },
     ],
   },
   {

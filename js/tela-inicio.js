@@ -6,6 +6,7 @@ import { icone } from './ui.js';
 import { TIPOS, STATUS_MR, fmtDataBr, fmtNumero, fmtTc, resumoMr } from './mr.js';
 import { buscar } from './busca.js';
 import { VERSAO_APP } from './ajuda.js';
+import { excluirMrConfirmado } from './caminhao.js';
 import { fazerBackup, restaurarBackup, ultimoBackup, fmtDataHoraIso, DIAS_LEMBRETE } from './backup.js';
 
 const LOGO = 'assets/logo-arcoirismar.png';
@@ -49,13 +50,18 @@ export async function telaInicio() {
     }
     caixaLista.replaceChildren(...vis.map((m) => {
       const r = resumoMr((porMr.get(m.id) || []).sort((a, b) => a.item - b.item));
-      return el('a', { class: `cartao-mr tipo-${m.tipo}`, href: `#/mr/${m.id}` },
-        el('div', { class: 'cartao-topo' },
-          el('span', { class: `selo-tipo tipo-${m.tipo}` }, TIPOS[m.tipo].rotulo),
-          el('span', { class: `selo-status st-${m.status}` }, STATUS_MR[m.status]?.rotulo || '—')),
-        el('h2', {}, m.local || 'Sem local'),
-        el('p', { class: 'sub' }, `${fmtDataBr(m.data)} · ${obraNome.get(m.obraId) || 'Sem obra'}`),
-        el('p', { class: 'contagens' }, `${r.caminhoes} caminhão(ões) · ${fmtNumero(r.volume)} m³`));
+      return el('div', { class: 'caixa-cartao-mr' },
+        el('a', { class: `cartao-mr tipo-${m.tipo}`, href: `#/mr/${m.id}` },
+          el('div', { class: 'cartao-topo' },
+            el('span', { class: `selo-tipo tipo-${m.tipo}` }, TIPOS[m.tipo].rotulo),
+            el('span', { class: `selo-status st-${m.status}` }, STATUS_MR[m.status]?.rotulo || '—')),
+          el('h2', {}, m.local || 'Sem local'),
+          el('p', { class: 'sub' }, `${fmtDataBr(m.data)} · ${obraNome.get(m.obraId) || 'Sem obra'}`),
+          el('p', { class: 'contagens' }, `${r.caminhoes} caminhão(ões) · ${fmtNumero(r.volume)} m³`)),
+        el('button', {
+          type: 'button', class: 'btn-icone btn-excluir-mr', title: 'Excluir MR', 'aria-label': `Excluir MR ${m.local}`,
+          onclick: async () => { if (await excluirMrConfirmado(m)) telaInicio(); },
+        }, icone('lixo')));
     }));
   }
 

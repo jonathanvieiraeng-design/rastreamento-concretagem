@@ -22,7 +22,7 @@ PWA para iPad com Apple Pencil: substitui o Mapa de Rastreamento (MR) de concret
 ## Publicar uma atualização
 
 1. Altere os arquivos.
-2. Em `sw.js`, **aumente a versão**: `mr-v8` → `mr-v9`. Sem isso o app instalado não percebe a mudança.
+2. Em `sw.js`, **aumente a versão**: `mr-v9` → `mr-v10`. Sem isso o app instalado não percebe a mudança.
 3. Se criou um arquivo novo, inclua-o na lista `ARQUIVOS` do `sw.js`.
 4. Se a mudança for visível para o usuário, atualize o texto em `js/ajuda.js` (e `VERSAO_APP`, se for uma versão nova).
 5. Faça commit e push. Ao abrir o app com internet, aparece a faixa **"Nova versão disponível — Recarregar"**.

@@ -1,6 +1,7 @@
 // Cabeçalho do MR: obra, tipo, local, data, especificação, elementos (Pilares) e assinaturas.
 import * as db from './db.js';
 import { montar, ir } from './nav.js';
+import { excluirMrConfirmado } from './caminhao.js';
 import { el, uid } from './util.js';
 import { icone, alerta, confirmar, pedirTexto, toast } from './ui.js';
 import {
@@ -148,19 +149,7 @@ export async function telaFormMr(id) {
   }
 
   async function excluir() {
-    const v = await pedirTexto({
-      titulo: 'Excluir MR',
-      rotulo: `Isso apaga o MR "${mr.local}" e os ${caminhoes.length} caminhão(ões) registrados. Não dá para desfazer. Digite EXCLUIR para confirmar.`,
-      rotuloOk: 'Excluir',
-      perigo: true,
-      maiusculas: true,
-      validar: (x) => (x.trim().toUpperCase() === 'EXCLUIR' ? null : 'Digite EXCLUIR.'),
-    });
-    if (v == null) return;
-    await db.limparMr(mr.id, { excluirMr: true });
-    if (mr.pranchaId) await db.excluir('pranchas', mr.pranchaId);
-    toast('MR excluído');
-    ir('#/');
+    if (await excluirMrConfirmado(mr)) ir('#/');
   }
 
   const campo = (rotulo, c, extra) => el('label', { class: 'rotulo-campo' }, el('span', {}, rotulo), c, extra);

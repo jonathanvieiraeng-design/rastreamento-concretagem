@@ -819,3 +819,9 @@ select.campo { -webkit-appearance: none; appearance: none; background-image: url
 .secao-ajuda h2 { font-size: 19px; color: var(--primario); }
 .secao-ajuda p { margin: 0; line-height: 1.5; }
 .lista-ajuda { margin: 0; padding-left: 24px; display: flex; flex-direction: column; gap: 6px; line-height: 1.5; }
+
+/* ---- excluir MR pelo cartão da tela inicial ---- */
+.caixa-cartao-mr { position: relative; display: flex; flex-direction: column; }
+.caixa-cartao-mr .cartao-mr { flex: 1; padding-right: 64px; }
+.btn-excluir-mr { position: absolute; right: 8px; bottom: 8px; width: 48px; height: 48px; color: var(--texto-3); }
+.btn-excluir-mr:active { color: var(--perigo); }

@@ -2,7 +2,7 @@
 // gravação automática, campos (NF, Bet, Vol, HI, HT), exclusão com renumeração e conferência.
 import * as db from './db.js';
 import { el, uid } from './util.js';
-import { icone, alerta, confirmar, toast, carregando, oferecerArquivo } from './ui.js';
+import { icone, alerta, confirmar, toast, carregando, oferecerArquivo, pedirTexto } from './ui.js';
 import { horaAgora, lerNumero, fmtNumero } from './mr.js';
 
 const ATRASO_GRAVAR = 400;
@@ -183,4 +183,23 @@ export async function oferecerRelatorio(mr, obra, caminhoes, extra) {
   } catch (e) {
     alerta(`Erro ao compartilhar: ${e.message}`, 'Erro');
   }
+}
+
+// Exclui o MR inteiro (caminhões, regiões e prancha) depois de digitar EXCLUIR. Devolve true se excluiu.
+export async function excluirMrConfirmado(mr) {
+  const n = (await db.listarDoMr('caminhoes', mr.id)).length;
+  const v = await pedirTexto({
+    titulo: 'Excluir MR',
+    rotulo: `Isso apaga o MR "${mr.local}"${n ? ` e ${n === 1 ? 'o caminhão registrado' : `os ${n} caminhões registrados`}` : ''}`
+      + `${mr.tipo === 'laje' ? ', os desenhos e a prancha' : ''}. Não dá para desfazer. Digite EXCLUIR para confirmar.`,
+    rotuloOk: 'Excluir',
+    perigo: true,
+    maiusculas: true,
+    validar: (x) => (x.trim().toUpperCase() === 'EXCLUIR' ? null : 'Digite EXCLUIR.'),
+  });
+  if (v == null) return false;
+  await db.limparMr(mr.id, { excluirMr: true });
+  if (mr.pranchaId) await db.excluir('pranchas', mr.pranchaId);
+  toast('MR excluído');
+  return true;
 }
