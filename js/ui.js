@@ -20,6 +20,10 @@ const ICONES = {
   legenda: '<path d="M9 6h11M9 12h11M9 18h11"/><rect x="3" y="4.5" width="3" height="3" rx=".6"/><rect x="3" y="10.5" width="3" height="3" rx=".6"/><rect x="3" y="16.5" width="3" height="3" rx=".6"/>',
   cadeado: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/>',
   prancha: '<path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9z"/><path d="M14 3v6h6"/>',
+  busca: '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',
+  tc: '<path d="M8 3h8M9 3v6l-4.5 9.5A1.7 1.7 0 006 21h12a1.7 1.7 0 001.5-2.5L15 9V3"/><path d="M7 15h10"/>',
+  salvar: '<path d="M12 4v11M7 10l5 5 5-5"/><path d="M4 17v2a1 1 0 001 1h14a1 1 0 001-1v-2"/>',
+  restaurar: '<path d="M12 20V9M7 14l5-5 5 5"/><path d="M4 7V5a1 1 0 011-1h14a1 1 0 011 1v2"/>',
 };
 
 export function icone(nome) {

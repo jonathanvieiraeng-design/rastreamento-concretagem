@@ -53,7 +53,7 @@ export class Planta {
     this.ev = eventos;
     this.regioes = [];           // [{ id, pontos, cor, item, rotulo }]
     this.opacidade = 0.33;
-    this.selecionadaId = null;
+    this.selecionadas = new Set();
     this.corTraco = '#000';
     this.mouseDesenha = false;   // teste no computador
     this.navegacaoTravada = false;
@@ -291,9 +291,29 @@ export class Planta {
     this._desenharRegioes();
   }
 
-  selecionar(id) {
-    this.selecionadaId = id;
+  // id, lista de ids ou null (limpa)
+  selecionar(ids) {
+    this.selecionadas = new Set(ids == null ? [] : Array.isArray(ids) ? ids : [ids]);
     this._desenharRegioes();
+  }
+
+  // Aproxima a vista para mostrar estes pontos (pt) com folga.
+  enquadrar(pontos) {
+    if (!this.pagina || !pontos.length) return;
+    const xs = pontos.map((p) => p[0]);
+    const ys = pontos.map((p) => p[1]);
+    const x0 = Math.min(...xs);
+    const x1 = Math.max(...xs);
+    const y0 = Math.min(...ys);
+    const y1 = Math.max(...ys);
+    const w = Math.max(x1 - x0, 1) * this.ajuste;
+    const h = Math.max(y1 - y0, 1) * this.ajuste;
+    this.s = Math.min(this.sMax, Math.max(1, 0.6 * Math.min(this.vw / w, this.vh / h)));
+    this.tx = this.vw / 2 - ((x0 + x1) / 2) * this.ajuste * this.s;
+    this.ty = this.vh / 2 - ((y0 + y1) / 2) * this.ajuste * this.s;
+    this._limitar();
+    this._aplicar();
+    this._agendarDetalhe();
   }
 
   // região de cima no ponto (pt)
@@ -322,7 +342,7 @@ export class Planta {
       ctx.closePath();
       ctx.fillStyle = rgba(r.cor, this.opacidade);
       ctx.fill('nonzero');
-      const sel = r.id === this.selecionadaId;
+      const sel = this.selecionadas.has(r.id);
       ctx.lineWidth = (sel ? 4 : 1.6) / k;
       ctx.strokeStyle = r.cor;
       ctx.setLineDash(sel ? [8 / k, 5 / k] : []);

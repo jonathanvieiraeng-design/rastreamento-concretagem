@@ -6,15 +6,16 @@ import { corDoItem } from './cores.js';
 import { el, uid } from './util.js';
 import { icone, abrirModal, confirmar, escolher, toast, carregando, alerta } from './ui.js';
 import { montar, ir } from './nav.js';
-import { STATUS_MR, duracao, fmtDuracao, fmtNumero, fmtDataBr, acumulados, resumoMr } from './mr.js';
+import { STATUS_MR, statusComTcs, duracao, fmtDuracao, fmtNumero, fmtDataBr, acumulados, resumoMr } from './mr.js';
 import {
   novoCaminhao, criarGravador, camposCaminhao, avisoNfRepetida, excluirCaminhao, camposFaltando,
   conferirAntesDeConcluir, oferecerRelatorio,
 } from './caminhao.js';
+import { oferecerBackupAoConcluir } from './backup.js';
 
 const LOGO = 'assets/logo-arcoirismar.png';
 
-export async function telaMrLaje(id) {
+export async function telaMrLaje(id, camId = null) {
   const mr = await db.obter('mrs', id);
   if (!mr) return ir('#/');
   const obra = mr.obraId ? await db.obter('obras', mr.obraId) : null;
@@ -116,6 +117,7 @@ export async function telaMrLaje(id) {
       await planta.carregar(prancha.pdf, prancha.pagina);
       vazio.hidden = true;
     } catch (e) {
+      if (e?.name === 'RenderingCancelledException') return; // saiu da tela antes de terminar
       console.error(e);
       vazio.replaceChildren(el('p', { class: 'erro' }, 'Não foi possível abrir a prancha.'),
         el('button', { type: 'button', class: 'btn', onclick: escolherPrancha }, 'Carregar outra'));
@@ -259,6 +261,7 @@ export async function telaMrLaje(id) {
         mr.status === 'campo'
           ? el('button', { type: 'button', class: 'btn btn-primario', onclick: concluir }, icone('check'), 'Concluir concretagem')
           : el('button', { type: 'button', class: 'btn', onclick: reabrir }, 'Reabrir (voltar a "Em campo")'),
+        el('a', { class: 'btn', href: `#/mr/${mr.id}/tcs` }, icone('tc'), 'Resultados de TC (MPa)'),
         el('button', { type: 'button', class: 'btn', onclick: gerarPdf }, icone('relatorio'), 'Relatório PDF')));
 
     btDesfazer.disabled = !desfazerPilha.length;
@@ -337,11 +340,12 @@ export async function telaMrLaje(id) {
     if (!prancha) faltas.push('Nenhuma prancha carregada.');
     if (!caminhoes.length) faltas.push('Nenhum caminhão registrado.');
     if (!(await conferirAntesDeConcluir(faltas, abrirModal))) return;
-    mr.status = 'concluido';
+    mr.status = statusComTcs('concluido', caminhoes);
     mr.concluidoEm = new Date().toISOString();
     await db.gravar('mrs', mr);
     atualizar();
     toast('MR concluído');
+    await oferecerBackupAoConcluir();
   }
 
   async function reabrir() {
@@ -467,7 +471,19 @@ export async function telaMrLaje(id) {
     });
   }
 
+  // vindo da busca: esse caminhão fica ativo e as regiões dele aparecem destacadas
+  if (camId && caminhaoPorId(camId)) mr.caminhaoAtivoId = camId;
   desenharAtivo();
   atualizar();
   await abrirPlanta();
+  if (camId && planta?.pagina) {
+    const minhas = regioes.filter((r) => r.caminhaoId === camId);
+    if (minhas.length) {
+      planta.selecionar(minhas.map((r) => r.id));
+      planta.enquadrar(minhas.flatMap((r) => r.pontos));
+      setTimeout(() => planta?.selecionar(null), 6000);
+    } else {
+      toast('Este caminhão não tem região desenhada.');
+    }
+  }
 }

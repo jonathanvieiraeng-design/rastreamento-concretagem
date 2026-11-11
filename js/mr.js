@@ -143,3 +143,29 @@ export function slug(txt, max = 40) {
 export function nomeArquivoMr(mr, ext) {
   return `MR-${TIPOS[mr.tipo].titulo}-${slug(mr.local) || 'SEM-LOCAL'}-${mr.data}.${ext}`;
 }
+
+// ---------- TCs (MPa) ----------
+
+export const IDADES_TC = [
+  { campo: 'tc7', dias: 7, rotulo: 'TC 7d' },
+  { campo: 'tc28', dias: 28, rotulo: 'TC 28d' },
+  { campo: 'tc60', dias: 60, rotulo: 'TC 60d' },
+];
+
+// Data da concretagem + dias (ISO). Só informativo: data prevista do rompimento.
+export function somarDias(iso, dias) {
+  if (!iso) return null;
+  const [a, m, d] = iso.split('-').map(Number);
+  return hojeISO(new Date(a, m - 1, d + dias));
+}
+
+// Regra do usuário: "TCs completos" quando todos os caminhões têm 7 e 28 dias.
+export function tcsCompletos(caminhoes) {
+  return caminhoes.length > 0 && caminhoes.every((c) => c.tc7 != null && c.tc28 != null);
+}
+
+// Status após mudança nos TCs. "Em campo" não muda; Concluído ↔ TCs completos.
+export function statusComTcs(status, caminhoes) {
+  if (status === 'campo') return status;
+  return tcsCompletos(caminhoes) ? 'tcs' : 'concluido';
+}

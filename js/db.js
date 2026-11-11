@@ -113,3 +113,13 @@ export async function obterMeta(chave) {
 export async function salvarMeta(chave, valor) {
   return pedido((await loja('meta', 'readwrite')).put({ chave, valor }));
 }
+
+// Restauração de backup: grava como veio (mantém o "atualizadoEm" original), numa transação.
+export async function gravarComoVeio(nomeLoja, objs) {
+  if (!objs.length) return;
+  const bd = await abrir();
+  const tx = bd.transaction(nomeLoja, 'readwrite');
+  const s = tx.objectStore(nomeLoja);
+  for (const o of objs) s.put(o);
+  return fimTransacao(tx);
+}

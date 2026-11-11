@@ -5,17 +5,18 @@ import { montar, ir } from './nav.js';
 import { el } from './util.js';
 import { icone, abrirModal, confirmar, toast } from './ui.js';
 import {
-  STATUS_MR, duracao, fmtDuracao, fmtNumero, fmtDataBr, acumulados, resumoMr,
+  STATUS_MR, statusComTcs, duracao, fmtDuracao, fmtNumero, fmtDataBr, acumulados, resumoMr,
   mapaElementos, naoVinculados, normalizarElemento,
 } from './mr.js';
 import {
   novoCaminhao, criarGravador, camposCaminhao, avisoNfRepetida, excluirCaminhao, camposFaltando,
   conferirAntesDeConcluir, oferecerRelatorio,
 } from './caminhao.js';
+import { oferecerBackupAoConcluir } from './backup.js';
 
 const LOGO = 'assets/logo-arcoirismar.png';
 
-export async function telaMrPilares(id) {
+export async function telaMrPilares(id, camId = null) {
   const mr = await db.obter('mrs', id);
   if (!mr) return ir('#/');
   const obra = mr.obraId ? await db.obter('obras', mr.obraId) : null;
@@ -132,6 +133,7 @@ export async function telaMrPilares(id) {
         mr.status === 'campo'
           ? el('button', { type: 'button', class: 'btn btn-primario', onclick: concluir }, icone('check'), 'Concluir concretagem')
           : el('button', { type: 'button', class: 'btn', onclick: reabrir }, 'Reabrir (voltar a "Em campo")'),
+        el('a', { class: 'btn', href: `#/mr/${mr.id}/tcs` }, icone('tc'), 'Resultados de TC (MPa)'),
         el('button', { type: 'button', class: 'btn', onclick: gerarPdf }, icone('relatorio'), 'Relatório PDF')));
   }
 
@@ -226,12 +228,13 @@ export async function telaMrPilares(id) {
     if (nv.length) faltas.push(`Elementos sem caminhão: ${nv.join('; ')}`);
     if (!caminhoes.length) faltas.push('Nenhum caminhão registrado.');
     if (!(await conferirAntesDeConcluir(faltas, abrirModal))) return;
-    mr.status = 'concluido';
+    mr.status = statusComTcs('concluido', caminhoes);
     mr.concluidoEm = new Date().toISOString();
     await db.gravar('mrs', mr);
     atualizarSubtitulo();
     desenharPainel();
     toast('MR concluído');
+    await oferecerBackupAoConcluir();
   }
 
   async function reabrir() {
@@ -248,4 +251,11 @@ export async function telaMrPilares(id) {
 
   atualizarSubtitulo();
   desenharLista();
+  // vindo da busca: mostra o caminhão
+  const alvo = camId && document.getElementById(`cam-${camId}`);
+  if (alvo) {
+    alvo.classList.add('destaque');
+    alvo.scrollIntoView({ block: 'center' });
+    setTimeout(() => alvo.classList.remove('destaque'), 5000);
+  }
 }

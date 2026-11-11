@@ -3,13 +3,15 @@ import * as db from './db.js';
 import { montar } from './nav.js';
 import { el } from './util.js';
 import { icone } from './ui.js';
-import { TIPOS, STATUS_MR, fmtDataBr, fmtNumero, resumoMr } from './mr.js';
+import { TIPOS, STATUS_MR, fmtDataBr, fmtNumero, fmtTc, resumoMr } from './mr.js';
+import { buscar } from './busca.js';
+import { fazerBackup, restaurarBackup, ultimoBackup, fmtDataHoraIso, DIAS_LEMBRETE } from './backup.js';
 
 const LOGO = 'assets/logo-arcoirismar.png';
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
-// filtros ficam enquanto o app está aberto
-const filtro = { obraId: '', tipo: '', mes: '' };
+// filtros e busca ficam enquanto o app está aberto
+const filtro = { obraId: '', tipo: '', mes: '', busca: '' };
 
 export async function telaInicio() {
   const [mrs, obras, caminhoes] = await Promise.all([db.listar('mrs'), db.listar('obras'), db.listar('caminhoes')]);
@@ -76,6 +78,54 @@ export async function telaInicio() {
     }, r)));
   desenharSeg();
 
+
+  // ---- busca reversa ----
+  const caixaBusca = el('div', { class: 'resultados-busca', hidden: true });
+  const cBusca = el('input', {
+    class: 'campo campo-busca', type: 'search', value: filtro.busca, placeholder: 'Buscar NF, Bet ou elemento (ex.: 140537, P11)',
+    autocomplete: 'off', autocorrect: 'off', spellcheck: 'false', autocapitalize: 'characters', enterkeyhint: 'search',
+    'aria-label': 'Buscar por NF, Bet ou elemento',
+  });
+  cBusca.addEventListener('input', () => { filtro.busca = cBusca.value; desenharBusca(); });
+
+  function desenharBusca() {
+    const q = filtro.busca.trim();
+    caixaBusca.hidden = !q;
+    caixaLista.hidden = !!q;
+    filtros.hidden = !!q;
+    if (!q) return;
+    const res = buscar(q, lista, caminhoes);
+    caixaBusca.replaceChildren(
+      el('p', { class: 'nota' }, res.length ? `${res.length} resultado(s)${res.length >= 60 ? ' (mostrando os 60 primeiros)' : ''}. Toque para abrir o MR no caminhão.` : 'Nada encontrado.'),
+      ...res.map(({ mr, caminhao: c, motivos }) => el('a', {
+        class: `resultado tipo-${mr.tipo}`, href: c ? `#/mr/${mr.id}/cam/${c.id}` : `#/mr/${mr.id}`,
+      },
+      el('div', { class: 'resultado-topo' },
+        el('span', { class: `selo-tipo tipo-${mr.tipo}` }, TIPOS[mr.tipo].rotulo),
+        el('strong', {}, c ? `Caminhão ${c.item}` : 'SEM CAMINHÃO'),
+        ...motivos.map((m) => el('span', { class: `chip-el${c ? ' sel' : ' falta'}` }, m))),
+      el('p', { class: 'sub' }, `${mr.local} · ${fmtDataBr(mr.data)} · ${obraNome.get(mr.obraId) || 'Sem obra'}`),
+      c ? el('p', { class: 'contagens' }, [
+        `NF ${c.nf ?? '—'}`, `Bet ${c.bet || '—'}`, `${c.hi || '—'}–${c.ht || '—'}`, `${c.vol != null ? fmtNumero(c.vol) : '—'} m³`,
+        c.tc7 != null ? `TC7 ${fmtTc(c.tc7)} MPa` : null, c.tc28 != null ? `TC28 ${fmtTc(c.tc28)} MPa` : null,
+      ].filter(Boolean).join(' · ')) : null)));
+  }
+
+  // ---- backup ----
+  const ub = await ultimoBackup();
+  const atrasado = lista.length > 0 && (ub.iso == null || ub.dias >= DIAS_LEMBRETE);
+  const blocoBackup = el('section', { class: `bloco-backup${atrasado ? ' atrasado' : ''}` },
+    el('div', {},
+      el('strong', {}, 'Backup'),
+      el('p', {}, ub.iso
+        ? `Último backup: ${fmtDataHoraIso(ub.iso)} (${ub.dias === 0 ? 'hoje' : ub.dias === 1 ? 'há 1 dia' : `há ${ub.dias} dias`}).`
+        : 'Nenhum backup feito neste iPad.'),
+      atrasado ? el('p', { class: 'aviso-backup' }, `Faça um backup e salve no OneDrive${ub.iso ? ` (passou de ${DIAS_LEMBRETE} dias)` : ''}.`) : null),
+    el('div', { class: 'botoes-backup' },
+      el('button', { type: 'button', class: `btn${atrasado ? ' btn-primario' : ''}`, onclick: async () => { if (await fazerBackup()) telaInicio(); } }, icone('salvar'), 'Fazer backup'),
+      el('button', { type: 'button', class: 'btn', onclick: async () => { if (await restaurarBackup()) telaInicio(); } }, icone('restaurar'), 'Restaurar backup')));
+
+  const filtros = el('div', { class: 'filtros' }, seg, selObra, selMes);
   const raiz = el('div', { class: 'tela tela-rolavel' },
     el('div', { class: 'conteudo' },
       el('header', { class: 'cabecalho-inicio' },
@@ -83,11 +133,15 @@ export async function telaInicio() {
         el('h1', {}, 'Rastreamento de Concretagem'),
         el('p', { class: 'sub' }, 'Mapa de Rastreamento (MR) · caminhão, NF e local de aplicação')),
       el('a', { class: 'btn btn-primario btn-grande', href: '#/novo' }, icone('mais'), 'Novo MR'),
-      el('div', { class: 'filtros' }, seg, selObra, selMes),
+      el('label', { class: 'linha-busca' }, icone('busca'), cBusca),
+      filtros,
+      caixaBusca,
       caixaLista,
+      blocoBackup,
       el('div', { class: 'acoes-inicio' },
         el('a', { class: 'btn', href: '#/cadastros' }, icone('lista'), 'Cadastros de elementos')),
-      el('p', { class: 'rodape-versao' }, 'Construtora Arco-Íris-Mar · uso offline · Etapa 4')));
+      el('p', { class: 'rodape-versao' }, 'Construtora Arco-Íris-Mar · uso offline · Etapa 5')));
   montar(raiz);
   desenharLista();
+  desenharBusca();
 }

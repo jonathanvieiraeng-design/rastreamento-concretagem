@@ -2,7 +2,7 @@
 
 PWA para iPad com Apple Pencil: substitui o Mapa de Rastreamento (MR) de concretagem feito em Excel. Funciona 100% offline depois de instalado. Os dados ficam só no aparelho (IndexedDB).
 
-> **Estado atual: Etapa 4** — MR de Pilares e MR de Laje completos (caminhões, elementos por chips no Pilares, regiões desenhadas na prancha na Laje, relatório PDF com mapa em A3). TCs, busca reversa e backup entram na Etapa 5.
+> **Estado atual: Etapa 5** — MR de Pilares e de Laje, resultados de TC (MPa), busca reversa (NF, Bet, elemento) e backup/restauração. Falta a Etapa 6 (instruções finais).
 
 ## Publicar no GitHub Pages
 
@@ -22,7 +22,7 @@ PWA para iPad com Apple Pencil: substitui o Mapa de Rastreamento (MR) de concret
 ## Publicar uma atualização
 
 1. Altere os arquivos.
-2. Em `sw.js`, **aumente a versão**: `mr-v4` → `mr-v5`. Sem isso o app instalado não percebe a mudança.
+2. Em `sw.js`, **aumente a versão**: `mr-v5` → `mr-v6`. Sem isso o app instalado não percebe a mudança.
 3. Se criou um arquivo novo, inclua-o na lista `ARQUIVOS` do `sw.js`.
 4. Faça commit e push. Ao abrir o app com internet, aparece a faixa **"Nova versão disponível — Recarregar"**.
 
@@ -47,6 +47,9 @@ PWA para iPad com Apple Pencil: substitui o Mapa de Rastreamento (MR) de concret
 | `js/tela-mr-pilares.js` | MR de Pilares: caminhões, horas, chips, conclusão |
 | `js/tela-mr-laje.js` | MR de Laje: prancha, regiões por caminhão (Apple Pencil), painel dos caminhões, conclusão |
 | `js/caminhao.js` | Partes comuns do caminhão (campos, gravação, exclusão com renumeração, relatório) |
+| `js/tela-tcs.js` | Resultados de TC 7/28/60 dias (MPa) de um MR; status "TCs completos" com 7 e 28 dias em todos |
+| `js/busca.js` | Busca reversa: NF, Bet ou elemento → MR e caminhão |
+| `js/backup.js` | Backup .json (com as pranchas) e restauração que junta os dados |
 | `js/mr.js` | Regras do MR: formatos, valores derivados, listas de elementos |
 | `js/relatorio.js` | Relatório PDF do MR (Laje: página A3 com o mapa e a legenda) |
 | `js/planta.js` | pdf.js, zoom, arraste, traço da caneta e camada das regiões |
@@ -65,3 +68,9 @@ PWA para iPad com Apple Pencil: substitui o Mapa de Rastreamento (MR) de concret
 | jspdf-autotable | 3.8.4 | `vendor/jspdf.plugin.autotable.min.js` |
 | Poppins (títulos, licença OFL) | Google Fonts | `fonts/Poppins-*.ttf`, `fonts/OFL-Poppins.txt` |
 | Open Sans (texto, licença OFL) | googlefonts/opensans | `fonts/OpenSans-*.ttf`, `fonts/OFL-OpenSans.txt` |
+
+## Backup
+
+- Tela inicial → **Fazer backup**: gera `BACKUP-MR-AAAA-MM-DD-HHhMM.json` com tudo (obras, cadastros, MRs, caminhões, regiões, pranchas e preferências). Salve no OneDrive pelo Compartilhar.
+- Ao concluir uma concretagem, o app oferece o backup. A tela inicial mostra a data do último backup e avisa quando passa de 30 dias.
+- **Restaurar backup** junta o arquivo aos dados do iPad: registro novo entra; registro que existe nos dois fica com a versão mais recente (`atualizadoEm`); nada é apagado. As preferências do iPad (opacidade etc.) são mantidas.
