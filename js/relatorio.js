@@ -1,6 +1,9 @@
 // Relatório do MR em PDF (jsPDF + autotable), na identidade da Construtora Arco-Íris-Mar.
-// A4 paisagem: cabeçalho, resumo, tabela de caminhões, rastreamento por elemento e assinaturas.
-import { bufParaBase64 } from './util.js';
+// A4 paisagem: cabeçalho, resumo, tabela de caminhões, rastreamento por elemento (Pilares) e assinaturas.
+// Laje: mais uma página A3 paisagem com o mapa (prancha + regiões numeradas) e a legenda.
+import { bufParaBase64, hexParaRgb, limitarEscala } from './util.js';
+import { corDoItem, rgba } from './cores.js';
+import { pontoRotulo } from './geometria.js';
 import {
   TIPOS, STATUS_MR, duracao, fmtDuracao, fmtNumero, fmtTc, fmtDataBr, acumulados, resumoMr,
   mapaElementos, naoVinculados, compararNatural, juntarElementos, nomeArquivoMr,
@@ -19,9 +22,13 @@ async function baixar(url) {
 
 // A logo é PNG com transparência (o jsPDF guardaria sem compressão). Converte para JPEG.
 async function logoJpeg() {
-  const img = new Image();
-  img.src = LOGO;
-  await img.decode();
+  // onload (e não decode()): decode() fica parado com o app em segundo plano
+  const img = await new Promise((ok, falha) => {
+    const i = new Image();
+    i.onload = () => ok(i);
+    i.onerror = () => falha(new Error('logo não encontrada'));
+    i.src = LOGO;
+  });
   const c = document.createElement('canvas');
   c.width = 700;
   c.height = Math.round((700 * img.naturalHeight) / img.naturalWidth);
@@ -58,7 +65,7 @@ function fmtDataHora(d) {
   return `${dois(d.getDate())}/${dois(d.getMonth() + 1)}/${d.getFullYear()} ${dois(d.getHours())}:${dois(d.getMinutes())}`;
 }
 
-export async function gerarRelatorioMr(mr, obra, caminhoes) {
+export async function gerarRelatorioMr(mr, obra, caminhoes, extra = {}) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
   const f = await carregarRecursos();
@@ -143,6 +150,7 @@ export async function gerarRelatorioMr(mr, obra, caminhoes) {
   // ---- tabela de caminhões ----
   const acum = acumulados(ordenados);
   const comElementos = mr.tipo === 'pilares';
+  const ehLaje = mr.tipo === 'laje';
   const cab = ['Item', 'NF', 'Bet', 'HI', 'HT', 'Descarga', 'Vol (m³)', 'Acum. (m³)', 'TC 7d', 'TC 28d', 'TC 60d'];
   if (comElementos) cab.push('Elementos');
   const corpo = ordenados.map((c, i) => {
@@ -177,6 +185,11 @@ export async function gerarRelatorioMr(mr, obra, caminhoes) {
     9: { cellWidth: 14, halign: 'right' },
     10: { cellWidth: 14, halign: 'right' },
   };
+  if (!comElementos) {
+    // sem a coluna Elementos: as colunas se esticam até a largura da página
+    const soma = Object.values(colunas).reduce((s, c) => s + c.cellWidth, 0);
+    for (const c of Object.values(colunas)) c.cellWidth *= (L - 2 * M) / soma;
+  }
   doc.autoTable({
     startY: y,
     margin: { left: M, right: M, bottom: 16 },
@@ -186,8 +199,32 @@ export async function gerarRelatorioMr(mr, obra, caminhoes) {
     headStyles: { font: 'OpenSans', fontStyle: 'bold', fillColor: AZUL, textColor: 255 },
     alternateRowStyles: { fillColor: CLARO },
     columnStyles: colunas,
+    didParseCell: (d) => {
+      // Laje: o Item na cor do caminhão (a mesma do mapa)
+      if (ehLaje && d.section === 'body' && d.column.index === 0 && ordenados[d.row.index]) {
+        d.cell.styles.fillColor = hexParaRgb(corDoItem(ordenados[d.row.index].item));
+        d.cell.styles.textColor = 255;
+      }
+    },
   });
   y = doc.lastAutoTable.finalY + 8;
+
+  // ---- Laje: caminhões sem região ----
+  const regioes = extra.regioes || [];
+  if (ehLaje) {
+    const sem = ordenados.filter((c) => !regioes.some((rg) => rg.caminhaoId === c.id));
+    doc.setFontSize(9);
+    if (sem.length) {
+      doc.setFont('OpenSans', 'bold');
+      doc.setTextColor(...ALERTA);
+      doc.text(`Caminhão sem região desenhada no mapa: ${sem.map((c) => c.item).join(', ')}.`, M, y);
+    } else if (ordenados.length) {
+      doc.setFont('OpenSans', 'normal');
+      doc.setTextColor(...MEDIO);
+      doc.text(extra.prancha ? 'Locais de aplicação: ver o mapa na página seguinte (número = Item do caminhão).' : 'Sem prancha carregada: o mapa não foi gerado.', M, y);
+    }
+    y += 6;
+  }
 
   // ---- rastreamento por elemento (Pilares) ----
   if (comElementos) {
@@ -280,18 +317,25 @@ export async function gerarRelatorioMr(mr, obra, caminhoes) {
     if (nome) doc.text(nome, x, y + 21);
   });
 
+  // ---- Laje: mapa em A3 ----
+  if (ehLaje && extra.prancha) {
+    await paginaMapa(doc, f, mr, ordenados, regioes, extra.prancha, extra.opacidade ?? 0.33);
+  }
+
   // ---- rodapé ----
   const total = doc.getNumberOfPages();
   for (let i = 1; i <= total; i++) {
     doc.setPage(i);
+    const Lp = doc.internal.pageSize.getWidth();
+    const Ap = doc.internal.pageSize.getHeight();
     doc.setDrawColor(...OURO);
     doc.setLineWidth(0.5);
-    doc.line(M, A - 11, L - M, A - 11);
+    doc.line(M, Ap - 11, Lp - M, Ap - 11);
     doc.setFont('OpenSans', 'normal');
     doc.setFontSize(7.5);
     doc.setTextColor(...MEDIO);
-    doc.text(`Construtora Arco-Íris-Mar · ${obra?.nome || ''} · MR ${tipo.rotulo} · ${mr.local} · ${fmtDataBr(mr.data)} · emitido em ${fmtDataHora(emissao)}`, M, A - 6.5, { maxWidth: L - 2 * M - 30 });
-    doc.text(`Página ${i} de ${total}`, L - M, A - 6.5, { align: 'right' });
+    doc.text(`Construtora Arco-Íris-Mar · ${obra?.nome || ''} · MR ${tipo.rotulo} · ${mr.local} · ${fmtDataBr(mr.data)} · emitido em ${fmtDataHora(emissao)}`, M, Ap - 6.5, { maxWidth: Lp - 2 * M - 30 });
+    doc.text(`Página ${i} de ${total}`, Lp - M, Ap - 6.5, { align: 'right' });
   }
 
   return new File([doc.output('blob')], nomeArquivoMr(mr, 'pdf'), { type: 'application/pdf' });
@@ -302,4 +346,207 @@ function titulo(doc, texto, x, y) {
   doc.setFontSize(11.5);
   doc.setTextColor(...AZUL);
   doc.text(texto, x, y);
+}
+
+// ---------- mapa da laje ----------
+
+const PX_POR_MM = 8; // ~200 dpi na impressão
+
+// Retângulo [x, y, l, a] em pt com tudo o que não é branco na página, mais as regiões, com folga.
+async function areaDesenhada(pagina, regioes) {
+  const vp1 = pagina.getViewport({ scale: 1 });
+  const k = Math.min(1, 1200 / Math.max(vp1.width, vp1.height));
+  const vp = pagina.getViewport({ scale: k });
+  const c = document.createElement('canvas');
+  c.width = Math.ceil(vp.width);
+  c.height = Math.ceil(vp.height);
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, c.width, c.height);
+  await pagina.render({ canvasContext: ctx, viewport: vp, intent: 'print' }).promise; // 'print': não depende de quadros de animação (segue mesmo com o app em segundo plano)
+  const px = ctx.getImageData(0, 0, c.width, c.height).data;
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  for (let y = 0; y < c.height; y++) {
+    for (let x = 0; x < c.width; x++) {
+      const i = (y * c.width + x) * 4;
+      if (px[i] < 235 || px[i + 1] < 235 || px[i + 2] < 235) {
+        if (x < x0) x0 = x;
+        if (x > x1) x1 = x;
+        if (y < y0) y0 = y;
+        if (y > y1) y1 = y;
+      }
+    }
+  }
+  c.width = 0;
+  c.height = 0;
+  if (x1 < x0) return [0, 0, vp1.width, vp1.height]; // página em branco
+  x0 /= k; y0 /= k; x1 = (x1 + 1) / k; y1 = (y1 + 1) / k;
+  for (const r of regioes) {
+    for (const [x, y] of r.pontos) {
+      x0 = Math.min(x0, x); x1 = Math.max(x1, x);
+      y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+    }
+  }
+  const folga = 0.012 * Math.max(x1 - x0, y1 - y0);
+  x0 = Math.max(0, x0 - folga);
+  y0 = Math.max(0, y0 - folga);
+  x1 = Math.min(vp1.width, x1 + folga);
+  y1 = Math.min(vp1.height, y1 + folga);
+  return [x0, y0, x1 - x0, y1 - y0];
+}
+
+// Prancha + regiões numeradas como JPEG, no tamanho que cabe na caixa (mm).
+async function imagemMapa(prancha, regioes, ordenados, opacidade, caixaL, caixaA) {
+  const { abrirPdf } = await import('./planta.js');
+  const pdf = await abrirPdf(prancha.pdf);
+  try {
+    const pagina = await pdf.getPage(Math.min(prancha.pagina || 1, pdf.numPages));
+    // recorte: só a parte desenhada da prancha (sem a margem branca), sem cortar nenhuma região
+    const [bx, by, bw, bh] = await areaDesenhada(pagina, regioes);
+    const mmPorPt = Math.min(caixaL / bw, caixaA / bh);
+    const escala = limitarEscala(bw, bh, mmPorPt * PX_POR_MM);
+    const vp = pagina.getViewport({ scale: escala, offsetX: -bx * escala, offsetY: -by * escala });
+    const c = document.createElement('canvas');
+    c.width = Math.floor(bw * escala);
+    c.height = Math.floor(bh * escala);
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, c.width, c.height);
+    await pagina.render({ canvasContext: ctx, viewport: vp, intent: 'print' }).promise; // 'print': não depende de quadros de animação (segue mesmo com o app em segundo plano)
+
+    const pxPorMm = escala / mmPorPt;
+    const porId = new Map(ordenados.map((x) => [x.id, x]));
+    // regiões (pontos em pt da prancha); a última fica por cima
+    ctx.setTransform(escala, 0, 0, escala, -bx * escala, -by * escala);
+    ctx.lineJoin = 'round';
+    for (const r of regioes) {
+      const cam = porId.get(r.caminhaoId);
+      const cor = cam ? corDoItem(cam.item) : '#777777';
+      const p = r.pontos;
+      ctx.beginPath();
+      ctx.moveTo(p[0][0], p[0][1]);
+      for (let i = 1; i < p.length; i++) ctx.lineTo(p[i][0], p[i][1]);
+      ctx.closePath();
+      ctx.fillStyle = rgba(cor, opacidade);
+      ctx.fill('nonzero');
+      ctx.lineWidth = (0.35 * pxPorMm) / escala;
+      ctx.strokeStyle = cor;
+      ctx.stroke();
+    }
+    // números: tamanho fixo no papel
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (const r of regioes) {
+      const cam = porId.get(r.caminhaoId);
+      const cor = cam ? corDoItem(cam.item) : '#777777';
+      const [rx, ry] = pontoRotulo(r.pontos);
+      const x = (rx - bx) * escala;
+      const y = (ry - by) * escala;
+      const txt = String(cam?.item ?? '?');
+      const raio = (txt.length > 1 ? 2.9 : 2.5) * pxPorMm;
+      ctx.beginPath();
+      ctx.arc(x, y, raio, 0, Math.PI * 2);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fill();
+      ctx.lineWidth = 0.55 * pxPorMm;
+      ctx.strokeStyle = cor;
+      ctx.stroke();
+      ctx.fillStyle = '#1A1A1A';
+      ctx.font = `700 ${Math.round(3.1 * pxPorMm)}px Helvetica, Arial, sans-serif`;
+      ctx.fillText(txt, x, y + 0.04 * raio);
+    }
+    const dados = c.toDataURL('image/jpeg', 0.9);
+    const res = { dados, l: bw * mmPorPt, a: bh * mmPorPt };
+    c.width = 0;
+    c.height = 0;
+    return res;
+  } finally {
+    pdf.destroy();
+  }
+}
+
+async function paginaMapa(doc, f, mr, ordenados, regioes, prancha, opacidade) {
+  doc.addPage('a3', 'landscape');
+  const L = 420;
+  const A = 297;
+  const M = 12;
+  const legL = 84;          // coluna da legenda
+  const topo = 27;
+  const base = A - 15;
+
+  // cabeçalho
+  const logoL = 42;
+  doc.addImage(f.logo, 'JPEG', L - M - logoL, 8, logoL, logoL / LOGO_PROPORCAO);
+  doc.setFont('Poppins', 'normal');
+  doc.setFontSize(15);
+  doc.setTextColor(...AZUL);
+  doc.text('Mapa da concretagem — locais de aplicação por caminhão', M, 14);
+  doc.setFont('OpenSans', 'normal');
+  doc.setFontSize(9.5);
+  doc.setTextColor(...MEDIO);
+  doc.text(`${mr.local} · ${fmtDataBr(mr.data)} · Prancha: ${prancha.nome}${prancha.pagina > 1 ? ` (pág. ${prancha.pagina})` : ''}`, M, 20, { maxWidth: L - 2 * M - logoL - 6 });
+  doc.setDrawColor(...OURO);
+  doc.setLineWidth(0.8);
+  doc.line(M, 23, L - M, 23);
+
+  // mapa
+  const caixaL = L - 2 * M - legL - 6;
+  const caixaA = base - topo - 4;
+  const img = await imagemMapa(prancha, regioes, ordenados, opacidade, caixaL, caixaA);
+  const ix = M + (caixaL - img.l) / 2;
+  const iy = topo + 4;
+  doc.addImage(img.dados, 'JPEG', ix, iy, img.l, img.a);
+  doc.setDrawColor(...LINHA);
+  doc.setLineWidth(0.3);
+  doc.rect(ix, iy, img.l, img.a);
+
+  // legenda
+  const lx = L - M - legL;
+  titulo(doc, 'Legenda', lx, topo + 4);
+  doc.setFont('OpenSans', 'normal');
+  doc.setFontSize(7.8);
+  doc.setTextColor(...MEDIO);
+  doc.text('Número no mapa = Item do caminhão.', lx, topo + 9);
+  const nReg = (c) => regioes.filter((r) => r.caminhaoId === c.id).length;
+  doc.autoTable({
+    startY: topo + 12,
+    margin: { left: lx, right: M, bottom: 16 },
+    tableWidth: legL,
+    head: [['Item', 'NF', 'HI–HT', 'Vol']],
+    body: ordenados.map((c) => [
+      String(c.item),
+      c.nf != null ? String(c.nf) : '—',
+      c.hi || c.ht ? `${c.hi || "—"}–${c.ht || "—"}` : "—",
+      c.vol != null ? fmtNumero(c.vol) : '—',
+    ]),
+    styles: { font: 'OpenSans', fontSize: 8, textColor: TEXTO, cellPadding: 1.2, lineColor: LINHA, lineWidth: 0.1 },
+    headStyles: { font: 'OpenSans', fontStyle: 'bold', fillColor: AZUL, textColor: 255 },
+    columnStyles: {
+      0: { cellWidth: 13, halign: 'center', fontStyle: 'bold' },
+      1: { cellWidth: 22 },
+      2: { cellWidth: 33 },
+      3: { cellWidth: 16, halign: 'right' },
+    },
+    didParseCell: (d) => {
+      if (d.section !== 'body') return;
+      const c = ordenados[d.row.index];
+      if (d.column.index === 0) {
+        d.cell.styles.fillColor = hexParaRgb(corDoItem(c.item));
+        d.cell.styles.textColor = 255;
+      }
+      if (!nReg(c)) d.cell.styles.textColor = d.column.index === 0 ? 255 : ALERTA;
+    },
+  });
+  const sem = ordenados.filter((c) => !nReg(c));
+  if (sem.length) {
+    const yy = doc.lastAutoTable.finalY + 5;
+    doc.setFont('OpenSans', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(...ALERTA);
+    doc.text(doc.splitTextToSize(`Sem região no mapa: ${sem.map((c) => c.item).join(', ')}.`, legL), lx, yy);
+  }
 }

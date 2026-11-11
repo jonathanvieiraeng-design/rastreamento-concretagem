@@ -36,8 +36,9 @@ export async function telaFormMr(id) {
   function desenharTipo() {
     segTipo.replaceChildren(
       el('button', { type: 'button', class: `seg-btn${tipo === 'pilares' ? ' ativo' : ''}`, disabled: !!mr, onclick: () => { tipo = 'pilares'; desenharTipo(); } }, 'Pilares'),
-      el('button', { type: 'button', class: `seg-btn${tipo === 'laje' ? ' ativo' : ''}`, disabled: true, title: 'Entra na Etapa 4' }, 'Laje (Etapa 4)'));
+      el('button', { type: 'button', class: `seg-btn${tipo === 'laje' ? ' ativo' : ''}`, disabled: !!mr, onclick: () => { tipo = 'laje'; desenharTipo(); } }, 'Laje'));
     blocoElementos.hidden = tipo !== 'pilares';
+    notaLaje.hidden = tipo !== 'laje';
   }
 
   const cLocal = el('input', { class: 'campo', value: mr?.local || '', placeholder: 'Ex.: Pilares P2 ao P35 — térreo' });
@@ -84,6 +85,9 @@ export async function telaFormMr(id) {
     cElementos,
     contagem,
     el('p', { class: 'nota' }, 'A lista fica guardada neste MR. Alterar o cadastro depois não muda MRs já feitos.'));
+
+  const notaLaje = el('p', { class: 'nota nota-destaque' },
+    'MR de Laje: depois de criar, carregue a prancha de forma (PDF) e desenhe com a Apple Pencil a região de cada caminhão.');
 
   const ass = mr || ultimasAss || {};
   const cInsp = el('input', { class: 'campo', value: ass.inspecionadoPor || '' });
@@ -154,6 +158,7 @@ export async function telaFormMr(id) {
     });
     if (v == null) return;
     await db.limparMr(mr.id, { excluirMr: true });
+    if (mr.pranchaId) await db.excluir('pranchas', mr.pranchaId);
     toast('MR excluído');
     ir('#/');
   }
@@ -171,6 +176,7 @@ export async function telaFormMr(id) {
       campo('Local da concretagem', cLocal),
       el('div', { class: 'grade-2' }, campo('Data', cData), campo('Especificação do concreto recebido', cEsp)),
       blocoElementos,
+      notaLaje,
       el('fieldset', { class: 'grupo' },
         el('legend', {}, 'Assinaturas'),
         el('div', { class: 'grade-3' }, campo('Inspecionado por', cInsp), campo('Visto', cVisto), campo('Aprovação Final', cAprov)),

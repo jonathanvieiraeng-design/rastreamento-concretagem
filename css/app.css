@@ -728,3 +728,49 @@ select.campo { -webkit-appearance: none; appearance: none; background-image: url
 .chip-toque { min-height: 48px; min-width: 64px; padding: 6px 14px; font-size: 17px; justify-content: center; cursor: pointer; font-family: inherit; }
 .chip-toque.em-outro { background: #fff; border-style: dashed; color: var(--texto-2); }
 .lista-faltas { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+
+/* ---- tela do MR de Laje: prancha + painel dos caminhões ---- */
+.corpo-laje { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 380px; }
+.corpo-laje .area-planta { min-width: 0; }
+.painel-laje {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px calc(var(--seg-dir) + 12px) calc(var(--seg-base) + 20px) 12px;
+  background: var(--superficie);
+  border-left: 1px solid var(--borda);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.bloco-cam { display: flex; flex-direction: column; gap: 10px; }
+.grade-cam { display: flex; flex-wrap: wrap; gap: 10px; padding: 6px; }
+.grade-cam .chip-caminhao { min-width: 60px; height: 60px; }
+.chip-caminhao small.sem-regiao { color: var(--perigo); font-weight: 700; }
+.chip-caminhao.ativo small.sem-regiao { color: #fff; }
+.resumo-laje { display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--borda); padding-top: 12px; }
+.vazio-ativo { padding: 14px; border-radius: 14px; border: 2px dashed var(--borda); text-align: center; }
+.vazio-ativo p { margin: 0 0 6px; }
+
+.cartao-ativo { border: 3px solid var(--cor); padding: 12px; gap: 10px; }
+.cartao-ativo .cab-caminhao { grid-template-columns: 56px 1.3fr 1fr 40px; gap: 8px; }
+.cartao-ativo .campo-mini .campo { font-size: 18px; padding-left: 8px; padding-right: 8px; }
+.cartao-ativo .campo-vol { grid-column: 2; }
+.cartao-ativo .cab-caminhao .derivado { grid-column: 3; padding-bottom: 12px; }
+.cartao-ativo .linha-horas { grid-template-columns: 1fr 1fr; gap: 10px; }
+.cartao-ativo .linha-hora { flex-direction: column; }
+.cartao-ativo .linha-hora .campo { width: 100%; }
+.cartao-ativo .btn-agora { min-height: 52px; }
+.cartao-ativo .btn-excluir { width: 44px; }
+.num-item.num-cor { background: var(--cor); height: 60px; }
+.texto-alerta { color: var(--perigo); }
+.nota-destaque { padding: 10px 12px; border-radius: 10px; background: #FBF6EA; border-left: 4px solid var(--ouro); color: var(--texto); }
+
+@media (max-width: 900px) {
+  .corpo-laje { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
+  .painel-laje { max-height: 42vh; border-left: 0; border-top: 1px solid var(--borda); padding-left: calc(var(--seg-esq) + 12px); }
+  .painel-laje { display: grid; grid-template-columns: 1fr 1fr; align-items: start; }
+  .painel-laje .resumo-laje { grid-column: 1 / -1; }
+}
+@media (max-width: 600px) {
+  .painel-laje { display: flex; }
+}

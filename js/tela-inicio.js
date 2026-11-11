@@ -86,9 +86,8 @@ export async function telaInicio() {
       el('div', { class: 'filtros' }, seg, selObra, selMes),
       caixaLista,
       el('div', { class: 'acoes-inicio' },
-        el('a', { class: 'btn', href: '#/cadastros' }, icone('lista'), 'Cadastros de elementos'),
-        el('a', { class: 'btn', href: '#/prototipo-laje' }, icone('editar'), 'Protótipo do desenho da laje')),
-      el('p', { class: 'rodape-versao' }, 'Construtora Arco-Íris-Mar · uso offline · Etapa 3')));
+        el('a', { class: 'btn', href: '#/cadastros' }, icone('lista'), 'Cadastros de elementos')),
+      el('p', { class: 'rodape-versao' }, 'Construtora Arco-Íris-Mar · uso offline · Etapa 4')));
   montar(raiz);
   desenharLista();
 }

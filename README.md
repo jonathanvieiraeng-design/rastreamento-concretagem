@@ -2,7 +2,7 @@
 
 PWA para iPad com Apple Pencil: substitui o Mapa de Rastreamento (MR) de concretagem feito em Excel. Funciona 100% offline depois de instalado. Os dados ficam só no aparelho (IndexedDB).
 
-> **Estado atual: Etapa 3** — MR de Pilares completo (cadastro de elementos, caminhões, chips, relatório PDF). O desenho da laje continua como protótipo (Etapa 2) e vira MR de Laje na Etapa 4. TCs, busca reversa e backup entram na Etapa 5.
+> **Estado atual: Etapa 4** — MR de Pilares e MR de Laje completos (caminhões, elementos por chips no Pilares, regiões desenhadas na prancha na Laje, relatório PDF com mapa em A3). TCs, busca reversa e backup entram na Etapa 5.
 
 ## Publicar no GitHub Pages
 
@@ -22,7 +22,7 @@ PWA para iPad com Apple Pencil: substitui o Mapa de Rastreamento (MR) de concret
 ## Publicar uma atualização
 
 1. Altere os arquivos.
-2. Em `sw.js`, **aumente a versão**: `mr-v1` → `mr-v2`. Sem isso o app instalado não percebe a mudança.
+2. Em `sw.js`, **aumente a versão**: `mr-v3` → `mr-v4`. Sem isso o app instalado não percebe a mudança.
 3. Se criou um arquivo novo, inclua-o na lista `ARQUIVOS` do `sw.js`.
 4. Faça commit e push. Ao abrir o app com internet, aparece a faixa **"Nova versão disponível — Recarregar"**.
 
@@ -45,9 +45,10 @@ PWA para iPad com Apple Pencil: substitui o Mapa de Rastreamento (MR) de concret
 | `js/tela-form-mr.js` | Cabeçalho do MR (obra, local, data, especificação, elementos, assinaturas) |
 | `js/tela-cadastros.js` | Cadastros de elementos (colar lista "P11; P12; …") |
 | `js/tela-mr-pilares.js` | MR de Pilares: caminhões, horas, chips, conclusão |
-| `js/tela-laje.js` | Protótipo do desenho da laje (Etapa 2) |
+| `js/tela-mr-laje.js` | MR de Laje: prancha, regiões por caminhão (Apple Pencil), painel dos caminhões, conclusão |
+| `js/caminhao.js` | Partes comuns do caminhão (campos, gravação, exclusão com renumeração, relatório) |
 | `js/mr.js` | Regras do MR: formatos, valores derivados, listas de elementos |
-| `js/relatorio.js` | Relatório PDF do MR |
+| `js/relatorio.js` | Relatório PDF do MR (Laje: página A3 com o mapa e a legenda) |
 | `js/planta.js` | pdf.js, zoom, arraste, traço da caneta e camada das regiões |
 | `js/geometria.js` | Área, ponto dentro do contorno, simplificação do traço, posição do número |
 | `js/cores.js` | Paleta dos caminhões |

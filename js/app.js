@@ -5,8 +5,17 @@ import { telaInicio } from './tela-inicio.js';
 import { telaFormMr } from './tela-form-mr.js';
 import { telaCadastros, telaFormCadastro } from './tela-cadastros.js';
 import { telaMrPilares } from './tela-mr-pilares.js';
-import { telaLaje } from './tela-laje.js';
+import { telaMrLaje } from './tela-mr-laje.js';
 import * as db from './db.js';
+
+// MR de teste da Etapa 2 (protótipo do desenho): apagado na primeira abertura desta versão.
+const PROTOTIPO = 'prototipo-laje';
+async function apagarPrototipo() {
+  const mr = await db.obter('mrs', PROTOTIPO);
+  if (!mr) return;
+  await db.limparMr(PROTOTIPO, { excluirMr: true });
+  if (mr.pranchaId) await db.excluir('pranchas', mr.pranchaId);
+}
 
 async function rota() {
   const p = rotaAtual();
@@ -16,10 +25,10 @@ async function rota() {
     else if (p[0] === 'mr' && p[1]) {
       const mr = await db.obter('mrs', p[1]);
       if (mr?.tipo === 'pilares') await telaMrPilares(p[1]);
+      else if (mr?.tipo === 'laje' && mr.id !== PROTOTIPO) await telaMrLaje(p[1]);
       else location.hash = '#/';
     } else if (p[0] === 'cadastros' && p[1]) await telaFormCadastro(p[1] === 'novo' ? null : p[1]);
     else if (p[0] === 'cadastros') await telaCadastros();
-    else if (p[0] === 'prototipo-laje') await telaLaje();
     else await telaInicio();
   } catch (e) {
     console.error(e);
@@ -64,4 +73,4 @@ navigator.storage?.persist?.().catch(() => {});
 definirRotas(rota);
 window.addEventListener('hashchange', rota);
 iniciarServiceWorker();
-rota();
+apagarPrototipo().catch((e) => console.warn('Protótipo não apagado', e)).finally(rota);

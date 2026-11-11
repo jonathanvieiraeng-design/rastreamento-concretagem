@@ -2,15 +2,18 @@
 // Toda alteração é gravada sozinha (digitação com pequeno atraso; botões na hora).
 import * as db from './db.js';
 import { montar, ir } from './nav.js';
-import { el, uid } from './util.js';
-import { icone, abrirModal, alerta, confirmar, toast, carregando, oferecerArquivo } from './ui.js';
+import { el } from './util.js';
+import { icone, abrirModal, confirmar, toast } from './ui.js';
 import {
-  STATUS_MR, horaAgora, duracao, fmtDuracao, lerNumero, fmtNumero, fmtDataBr, acumulados, resumoMr,
+  STATUS_MR, duracao, fmtDuracao, fmtNumero, fmtDataBr, acumulados, resumoMr,
   mapaElementos, naoVinculados, normalizarElemento,
 } from './mr.js';
+import {
+  novoCaminhao, criarGravador, camposCaminhao, avisoNfRepetida, excluirCaminhao, camposFaltando,
+  conferirAntesDeConcluir, oferecerRelatorio,
+} from './caminhao.js';
 
 const LOGO = 'assets/logo-arcoirismar.png';
-const ATRASO_GRAVAR = 400;
 
 export async function telaMrPilares(id) {
   const mr = await db.obter('mrs', id);
@@ -20,30 +23,9 @@ export async function telaMrPilares(id) {
   mr.elementos = mr.elementos || [];
 
   // ---------- gravação ----------
-  const pendentes = new Map(); // id → timer
-  function gravarDepois(c) {
-    clearTimeout(pendentes.get(c.id));
-    pendentes.set(c.id, setTimeout(() => {
-      pendentes.delete(c.id);
-      db.gravar('caminhoes', c).catch((e) => alerta(`Não foi possível gravar: ${e.message}`, 'Erro'));
-    }, ATRASO_GRAVAR));
-  }
-  async function gravarAgora(c) {
-    clearTimeout(pendentes.get(c.id));
-    pendentes.delete(c.id);
-    await db.gravar('caminhoes', c);
-  }
-  function descarregar() {
-    for (const [cid, t] of pendentes) {
-      clearTimeout(t);
-      const c = caminhoes.find((x) => x.id === cid);
-      if (c) db.gravar('caminhoes', c);
-    }
-    pendentes.clear();
-  }
-  const aoOcultar = () => { if (document.visibilityState === 'hidden') descarregar(); };
-  document.addEventListener('visibilitychange', aoOcultar);
-  window.addEventListener('pagehide', descarregar);
+  const g = criarGravador(caminhoes);
+  const gravarAgora = g.agora;
+  const descarregar = g.descarregar;
 
   // ---------- estrutura ----------
   const subtitulo = el('small', {});
@@ -65,11 +47,7 @@ export async function telaMrPilares(id) {
           icone('caminhao'), 'Chegou caminhão')),
       painel));
 
-  montar(raiz, () => {
-    descarregar();
-    document.removeEventListener('visibilitychange', aoOcultar);
-    window.removeEventListener('pagehide', descarregar);
-  });
+  montar(raiz, () => g.desligar());
 
   function atualizarSubtitulo() {
     subtitulo.textContent = `${fmtDataBr(mr.data)} · ${obra?.nome || 'Sem obra'} · ${STATUS_MR[mr.status]?.rotulo}`;
@@ -80,52 +58,7 @@ export async function telaMrPilares(id) {
     const d = { dur: el('strong', {}), acum: el('strong', {}), aviso: el('p', { class: 'aviso-campo', hidden: true }) };
     derivados.set(c.id, d);
 
-    const entrada = (props) => el('input', { class: 'campo', autocomplete: 'off', autocorrect: 'off', spellcheck: 'false', ...props });
-    const cNf = entrada({ value: c.nf ?? '', inputmode: 'numeric', enterkeyhint: 'next', 'aria-label': 'NF' });
-    const cBet = entrada({ value: c.bet ?? '', inputmode: 'numeric', enterkeyhint: 'next', 'aria-label': 'Betoneira' });
-    const cVol = entrada({ value: fmtNumero(c.vol), inputmode: 'decimal', enterkeyhint: 'done', 'aria-label': 'Volume' });
-
-    cNf.addEventListener('input', () => {
-      const s = cNf.value.replace(/\D/g, '');
-      if (s !== cNf.value) cNf.value = s;
-      c.nf = s ? Number(s) : null;
-      gravarDepois(c);
-      atualizarDerivados();
-    });
-    cBet.addEventListener('input', () => {
-      c.bet = cBet.value.trim(); // sempre texto
-      gravarDepois(c);
-    });
-    cVol.addEventListener('input', () => {
-      const n = lerNumero(cVol.value);
-      cVol.classList.toggle('invalido', Number.isNaN(n));
-      if (Number.isNaN(n)) return;
-      c.vol = n;
-      gravarDepois(c);
-      atualizarDerivados();
-    });
-
-    const hora = (campo, rotulo) => {
-      const cH = entrada({ type: 'time', value: c[campo] || '', 'aria-label': rotulo });
-      cH.addEventListener('change', () => {
-        c[campo] = cH.value || '';
-        gravarAgora(c);
-        atualizarDerivados();
-      });
-      const btAgora = el('button', {
-        type: 'button', class: 'btn btn-agora',
-        onclick: async () => {
-          const h = horaAgora();
-          if (c[campo] && c[campo] !== h && !(await confirmar(`${rotulo} já está como ${c[campo]}. Trocar para ${h}?`, { rotuloOk: 'Trocar' }))) return;
-          c[campo] = h;
-          cH.value = h;
-          await gravarAgora(c);
-          atualizarDerivados();
-          toast(`${rotulo} do caminhão ${c.item}: ${h}`);
-        },
-      }, icone('relogio'), `${rotulo} agora`);
-      return el('div', { class: 'bloco-hora' }, el('span', { class: 'rotulo-mini' }, rotulo), el('div', { class: 'linha-hora' }, btAgora, cH));
-    };
+    const k = camposCaminhao(c, g, atualizarDerivados);
 
     // elementos
     const chips = el('div', { class: 'chips-caminhao' });
@@ -143,13 +76,11 @@ export async function telaMrPilares(id) {
     return el('section', { class: 'cartao-caminhao', id: `cam-${c.id}` },
       el('div', { class: 'cab-caminhao' },
         el('div', { class: 'num-item' }, el('small', {}, 'Item'), String(c.item)),
-        el('label', { class: 'campo-mini' }, el('span', { class: 'rotulo-mini' }, 'NF'), cNf),
-        el('label', { class: 'campo-mini' }, el('span', { class: 'rotulo-mini' }, 'Bet'), cBet),
-        el('label', { class: 'campo-mini campo-vol' }, el('span', { class: 'rotulo-mini' }, 'Vol (m³)'), cVol),
+        k.nf, k.bet, k.vol,
         el('button', { type: 'button', class: 'btn-icone btn-excluir', 'aria-label': `Excluir caminhão ${c.item}`, onclick: () => excluir(c) }, icone('lixo'))),
       d.aviso,
       el('div', { class: 'linha-horas' },
-        hora('hi', 'HI'), hora('ht', 'HT'),
+        k.hi, k.ht,
         el('div', { class: 'derivado' }, el('span', { class: 'rotulo-mini' }, 'Descarga'), d.dur),
         el('div', { class: 'derivado' }, el('span', { class: 'rotulo-mini' }, 'Acumulado'), d.acum)),
       el('div', { class: 'linha-elementos' },
@@ -173,9 +104,9 @@ export async function telaMrPilares(id) {
       if (!d) return;
       d.dur.textContent = fmtDuracao(duracao(c.hi, c.ht));
       d.acum.textContent = `${fmtNumero(acum[i])} m³`;
-      const dup = c.nf != null && caminhoes.filter((x) => x.id !== c.id && x.nf === c.nf);
-      d.aviso.hidden = !(dup && dup.length);
-      if (dup && dup.length) d.aviso.textContent = `Atenção: NF ${c.nf} também está no caminhão ${dup.map((x) => x.item).join(', ')}.`;
+      const aviso = avisoNfRepetida(c, caminhoes);
+      d.aviso.hidden = !aviso;
+      d.aviso.textContent = aviso;
     });
     desenharPainel();
   }
@@ -206,10 +137,7 @@ export async function telaMrPilares(id) {
 
   // ---------- ações ----------
   async function adicionar() {
-    const c = {
-      id: uid(), mrId: mr.id, item: caminhoes.length + 1,
-      nf: null, bet: '', hi: '', ht: '', vol: null, tc7: null, tc28: null, tc60: null, elementos: [],
-    };
+    const c = novoCaminhao(mr.id, caminhoes.length + 1);
     await db.gravar('caminhoes', c);
     caminhoes.push(c);
     desenharLista();
@@ -219,23 +147,7 @@ export async function telaMrPilares(id) {
   }
 
   async function excluir(c) {
-    const seguintes = caminhoes.length - c.item;
-    const msg = `Excluir o caminhão ${c.item}${c.nf ? ` (NF ${c.nf})` : ''}?`
-      + (seguintes === 1 ? ` O caminhão seguinte será renumerado (Item ${c.item + 1} vira ${c.item}).` : '')
-      + (seguintes > 1 ? ` Os ${seguintes} caminhões seguintes serão renumerados (Item ${c.item + 1} vira ${c.item}…).` : '')
-      + ' Não dá para desfazer.';
-    if (!(await confirmar(msg, { titulo: 'Excluir caminhão', rotuloOk: 'Excluir', perigo: true }))) return;
-    clearTimeout(pendentes.get(c.id));
-    pendentes.delete(c.id);
-    await db.excluir('caminhoes', c.id);
-    caminhoes.splice(caminhoes.indexOf(c), 1);
-    const mudados = [];
-    caminhoes.forEach((x, i) => {
-      if (x.item !== i + 1) { x.item = i + 1; mudados.push(x); }
-    });
-    if (mudados.length) await db.gravarVarios('caminhoes', mudados);
-    desenharLista();
-    toast('Caminhão excluído');
+    if (await excluirCaminhao(c, caminhoes, g)) desenharLista();
   }
 
   async function escolherElementos(c) {
@@ -306,26 +218,14 @@ export async function telaMrPilares(id) {
     descarregar();
     const faltas = [];
     for (const c of caminhoes) {
-      const f = [];
-      if (c.nf == null) f.push('NF');
-      if (!c.bet) f.push('Bet');
-      if (!c.hi) f.push('HI');
-      if (!c.ht) f.push('HT');
-      if (c.vol == null) f.push('Vol');
+      const f = camposFaltando(c);
       if (!(c.elementos || []).length) f.push('elementos');
       if (f.length) faltas.push(`Caminhão ${c.item}: falta ${f.join(', ')}`);
     }
     const nv = naoVinculados(mr, caminhoes);
     if (nv.length) faltas.push(`Elementos sem caminhão: ${nv.join('; ')}`);
     if (!caminhoes.length) faltas.push('Nenhum caminhão registrado.');
-    if (faltas.length) {
-      const ok = await abrirModal({
-        titulo: 'Conferência antes de concluir',
-        corpo: el('div', { class: 'modal-corpo' }, el('ul', { class: 'lista-faltas' }, faltas.map((f) => el('li', {}, f)))),
-        botoes: [{ rotulo: 'Voltar e completar', valor: false }, { rotulo: 'Concluir assim', classe: 'btn-primario', valor: true }],
-      });
-      if (!ok) return;
-    }
+    if (!(await conferirAntesDeConcluir(faltas, abrirModal))) return;
     mr.status = 'concluido';
     mr.concluidoEm = new Date().toISOString();
     await db.gravar('mrs', mr);
@@ -343,26 +243,7 @@ export async function telaMrPilares(id) {
 
   async function gerarPdf() {
     descarregar();
-    const fim = carregando('Gerando relatório…');
-    let arquivo;
-    try {
-      const { gerarRelatorioMr } = await import('./relatorio.js');
-      arquivo = await gerarRelatorioMr(mr, obra, caminhoes);
-    } catch (e) {
-      console.error(e);
-      alerta(`Não foi possível gerar o relatório: ${e.message}`, 'Erro');
-      return;
-    } finally {
-      fim();
-    }
-    try {
-      await oferecerArquivo(arquivo, {
-        titulo: 'Relatório pronto',
-        texto: 'Toque em Compartilhar e escolha "Salvar em Arquivos" → pasta do OneDrive da obra.',
-      });
-    } catch (e) {
-      alerta(`Erro ao compartilhar: ${e.message}`, 'Erro');
-    }
+    await oferecerRelatorio(mr, obra, caminhoes);
   }
 
   atualizarSubtitulo();

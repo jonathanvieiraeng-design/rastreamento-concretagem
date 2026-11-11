@@ -1,6 +1,6 @@
 // Service worker: guarda o app inteiro para funcionar offline.
-// A cada versão publicada, AUMENTE o número abaixo (mr-v2, v3…).
-const VERSAO = 'mr-v2';
+// A cada versão publicada, AUMENTE o número abaixo (mr-v3, v3…).
+const VERSAO = 'mr-v3';
 
 const ARQUIVOS = [
   './',
@@ -18,7 +18,8 @@ const ARQUIVOS = [
   'js/tela-cadastros.js',
   'js/tela-form-mr.js',
   'js/tela-inicio.js',
-  'js/tela-laje.js',
+  'js/tela-mr-laje.js',
+  'js/caminhao.js',
   'js/tela-mr-pilares.js',
   'js/ui.js',
   'js/util.js',
