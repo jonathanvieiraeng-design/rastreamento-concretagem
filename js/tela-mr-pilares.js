@@ -133,7 +133,7 @@ export async function telaMrPilares(id, camId = null) {
         mr.status === 'campo'
           ? el('button', { type: 'button', class: 'btn btn-primario', onclick: concluir }, icone('check'), 'Concluir concretagem')
           : el('button', { type: 'button', class: 'btn', onclick: reabrir }, 'Reabrir (voltar a "Em campo")'),
-        el('a', { class: 'btn', href: `#/mr/${mr.id}/tcs` }, icone('tc'), 'Resultados de TC (MPa)'),
+        el('a', { class: 'btn', href: `#/mr/${mr.id}/tcs` }, icone('tc'), 'Resultados de TCP (MPa)'),
         el('button', { type: 'button', class: 'btn', onclick: gerarPdf }, icone('relatorio'), 'Relatório PDF')));
   }
 

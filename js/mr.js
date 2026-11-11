@@ -8,7 +8,7 @@ export const TIPOS = {
 export const STATUS_MR = {
   campo: { rotulo: 'Em campo' },
   concluido: { rotulo: 'Concluído' },
-  tcs: { rotulo: 'TCs completos' },
+  tcs: { rotulo: 'TCPs completos' },
 };
 
 // Padrão informado pelo usuário; depois vale o último usado.
@@ -144,12 +144,12 @@ export function nomeArquivoMr(mr, ext) {
   return `MR-${TIPOS[mr.tipo].titulo}-${slug(mr.local) || 'SEM-LOCAL'}-${mr.data}.${ext}`;
 }
 
-// ---------- TCs (MPa) ----------
+// ---------- TCP: teste de corpo de prova (MPa) ----------
 
 export const IDADES_TC = [
-  { campo: 'tc7', dias: 7, rotulo: 'TC 7d' },
-  { campo: 'tc28', dias: 28, rotulo: 'TC 28d' },
-  { campo: 'tc60', dias: 60, rotulo: 'TC 60d' },
+  { campo: 'tc7', dias: 7, rotulo: 'TCP 7d' },
+  { campo: 'tc28', dias: 28, rotulo: 'TCP 28d' },
+  { campo: 'tc60', dias: 60, rotulo: 'TCP 60d' },
 ];
 
 // Data da concretagem + dias (ISO). Só informativo: data prevista do rompimento.
@@ -159,12 +159,12 @@ export function somarDias(iso, dias) {
   return hojeISO(new Date(a, m - 1, d + dias));
 }
 
-// Regra do usuário: "TCs completos" quando todos os caminhões têm 7 e 28 dias.
+// Regra do usuário: "TCPs completos" quando todos os caminhões têm 7 e 28 dias.
 export function tcsCompletos(caminhoes) {
   return caminhoes.length > 0 && caminhoes.every((c) => c.tc7 != null && c.tc28 != null);
 }
 
-// Status após mudança nos TCs. "Em campo" não muda; Concluído ↔ TCs completos.
+// Status após mudança nos TCPs. "Em campo" não muda; Concluído ↔ TCPs completos.
 export function statusComTcs(status, caminhoes) {
   if (status === 'campo') return status;
   return tcsCompletos(caminhoes) ? 'tcs' : 'concluido';

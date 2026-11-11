@@ -151,7 +151,7 @@ export async function gerarRelatorioMr(mr, obra, caminhoes, extra = {}) {
   const acum = acumulados(ordenados);
   const comElementos = mr.tipo === 'pilares';
   const ehLaje = mr.tipo === 'laje';
-  const cab = ['Item', 'NF', 'Bet', 'HI', 'HT', 'Descarga', 'Vol (m³)', 'Acum. (m³)', 'TC 7d (MPa)', 'TC 28d (MPa)', 'TC 60d (MPa)'];
+  const cab = ['Item', 'NF', 'Bet', 'HI', 'HT', 'Descarga', 'Vol (m³)', 'Acum. (m³)', 'TCP 7d (MPa)', 'TCP 28d (MPa)', 'TCP 60d (MPa)'];
   if (comElementos) cab.push('Elementos');
   const corpo = ordenados.map((c, i) => {
     const linha = [

@@ -107,7 +107,7 @@ export async function telaInicio() {
       el('p', { class: 'sub' }, `${mr.local} · ${fmtDataBr(mr.data)} · ${obraNome.get(mr.obraId) || 'Sem obra'}`),
       c ? el('p', { class: 'contagens' }, [
         `NF ${c.nf ?? '—'}`, `Bet ${c.bet || '—'}`, `${c.hi || '—'}–${c.ht || '—'}`, `${c.vol != null ? fmtNumero(c.vol) : '—'} m³`,
-        c.tc7 != null ? `TC7 ${fmtTc(c.tc7)} MPa` : null, c.tc28 != null ? `TC28 ${fmtTc(c.tc28)} MPa` : null,
+        c.tc7 != null ? `TCP7 ${fmtTc(c.tc7)} MPa` : null, c.tc28 != null ? `TCP28 ${fmtTc(c.tc28)} MPa` : null,
       ].filter(Boolean).join(' · ')) : null)));
   }
 

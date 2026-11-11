@@ -1,4 +1,4 @@
-// Resultados de TC (MPa) de um MR: tabela com todos os caminhões e as idades 7, 28 e 60 dias.
+// Resultados de TCP — teste de corpo de prova (MPa) de um MR: tabela com todos os caminhões e as idades 7, 28 e 60 dias.
 // Valores com 1 casa decimal. O app não classifica os resultados (sem limites informados).
 import * as db from './db.js';
 import { montar, ir } from './nav.js';
@@ -33,7 +33,7 @@ export async function telaTcs(id) {
     if (novo !== mr.status) {
       mr.status = novo;
       await db.gravar('mrs', mr);
-      if (novo === 'tcs') toast('Todos os caminhões com TC 7 e 28 dias: MR marcado como "TCs completos".');
+      if (novo === 'tcs') toast('Todos os caminhões com TCP 7 e 28 dias: MR marcado como "TCPs completos".');
     }
     atualizarCabecalho();
   }
@@ -83,7 +83,7 @@ export async function telaTcs(id) {
     el('header', { class: 'topo' },
       el('a', { class: 'btn-icone', href: `#/mr/${mr.id}`, 'aria-label': 'Voltar ao MR' }, icone('voltar')),
       el('img', { class: 'logo-topo', src: LOGO, alt: 'Construtora Arco-Íris-Mar' }),
-      el('div', { class: 'topo-titulo' }, el('strong', {}, `Resultados de TC — MR ${TIPOS[mr.tipo].rotulo} — ${mr.local}`), subtitulo),
+      el('div', { class: 'topo-titulo' }, el('strong', {}, `Resultados de TCP — MR ${TIPOS[mr.tipo].rotulo} — ${mr.local}`), subtitulo),
       el('button', { type: 'button', class: 'btn-icone', title: 'Relatório PDF', 'aria-label': 'Relatório PDF', onclick: gerarPdf }, icone('relatorio'))),
     el('div', { class: 'rolavel form form-tcs' },
       el('p', { class: 'nota' }, 'Digite o resultado em MPa, com 1 casa decimal (vírgula ou ponto). Grava sozinho. "prev." é a data da concretagem + a idade, só como referência.'),
@@ -91,8 +91,8 @@ export async function telaTcs(id) {
       caminhoes.length
         ? el('div', { class: 'tabela-rolavel' }, el('table', { class: 'tabela-tcs' }, el('thead', {}, cab), corpo))
         : el('div', { class: 'vazio' }, el('p', {}, 'Este MR não tem caminhões.')),
-      el('p', { class: 'nota' }, 'O MR fica "TCs completos" quando todos os caminhões têm TC 7 e 28 dias.'),
-      el('button', { type: 'button', class: 'btn btn-primario btn-grande', onclick: gerarPdf }, icone('relatorio'), 'Relatório PDF com os TCs')));
+      el('p', { class: 'nota' }, 'TCP = teste de corpo de prova. O MR fica "TCPs completos" quando todos os caminhões têm TCP 7 e 28 dias.'),
+      el('button', { type: 'button', class: 'btn btn-primario btn-grande', onclick: gerarPdf }, icone('relatorio'), 'Relatório PDF com os TCPs')));
   montar(raiz, () => g.desligar());
   atualizarCabecalho();
 }
