@@ -758,7 +758,8 @@ select.campo { -webkit-appearance: none; appearance: none; background-image: url
 .cartao-ativo .cab-caminhao .derivado { grid-column: 3; padding-bottom: 12px; }
 .cartao-ativo .linha-horas { grid-template-columns: 1fr 1fr; gap: 10px; }
 .cartao-ativo .linha-hora { flex-direction: column; }
-.cartao-ativo .linha-hora .campo { width: 100%; }
+.cartao-ativo .linha-hora .campo { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; -webkit-appearance: none; appearance: none; display: block; text-align: center; }
+.cartao-ativo .linha-horas > * { min-width: 0; }
 .cartao-ativo .btn-agora { min-height: 52px; }
 .cartao-ativo .btn-excluir { width: 44px; }
 .num-item.num-cor { background: var(--cor); height: 60px; }
