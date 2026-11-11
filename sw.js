@@ -1,6 +1,6 @@
 // Service worker: guarda o app inteiro para funcionar offline.
 // A cada versão publicada, AUMENTE o número abaixo (mr-v2, v3…).
-const VERSAO = 'mr-v1';
+const VERSAO = 'mr-v2';
 
 const ARQUIVOS = [
   './',
@@ -11,11 +11,21 @@ const ARQUIVOS = [
   'js/cores.js',
   'js/db.js',
   'js/geometria.js',
+  'js/mr.js',
+  'js/nav.js',
   'js/planta.js',
+  'js/relatorio.js',
+  'js/tela-cadastros.js',
+  'js/tela-form-mr.js',
+  'js/tela-inicio.js',
+  'js/tela-laje.js',
+  'js/tela-mr-pilares.js',
   'js/ui.js',
   'js/util.js',
   'vendor/pdf.min.mjs',
   'vendor/pdf.worker.min.mjs',
+  'vendor/jspdf.umd.min.js',
+  'vendor/jspdf.plugin.autotable.min.js',
   'fonts/OpenSans-Regular.ttf',
   'fonts/OpenSans-SemiBold.ttf',
   'fonts/OpenSans-Bold.ttf',

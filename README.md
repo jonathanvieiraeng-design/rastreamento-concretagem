@@ -2,7 +2,7 @@
 
 PWA para iPad com Apple Pencil: substitui o Mapa de Rastreamento (MR) de concretagem feito em Excel. Funciona 100% offline depois de instalado. Os dados ficam só no aparelho (IndexedDB).
 
-> **Estado atual: protótipo da Etapa 2** — só o desenho das regiões na prancha da laje (contorno → fechamento → preenchimento, rejeição de palma, zoom/pan). Cadastro de caminhões (NF, Bet, horários, volume), MR de Pilares, relatório e backup entram nas próximas etapas.
+> **Estado atual: Etapa 3** — MR de Pilares completo (cadastro de elementos, caminhões, chips, relatório PDF). O desenho da laje continua como protótipo (Etapa 2) e vira MR de Laje na Etapa 4. TCs, busca reversa e backup entram na Etapa 5.
 
 ## Publicar no GitHub Pages
 
@@ -40,11 +40,18 @@ PWA para iPad com Apple Pencil: substitui o Mapa de Rastreamento (MR) de concret
 | Arquivo | Função |
 |---|---|
 | `index.html`, `css/app.css` | Página e estilo (identidade Arco-Íris-Mar) |
-| `js/app.js` | Tela do protótipo, caminhões, desfazer/refazer |
+| `js/app.js`, `js/nav.js` | Rotas e service worker |
+| `js/tela-inicio.js` | Lista de MRs com filtro por obra, tipo e mês |
+| `js/tela-form-mr.js` | Cabeçalho do MR (obra, local, data, especificação, elementos, assinaturas) |
+| `js/tela-cadastros.js` | Cadastros de elementos (colar lista "P11; P12; …") |
+| `js/tela-mr-pilares.js` | MR de Pilares: caminhões, horas, chips, conclusão |
+| `js/tela-laje.js` | Protótipo do desenho da laje (Etapa 2) |
+| `js/mr.js` | Regras do MR: formatos, valores derivados, listas de elementos |
+| `js/relatorio.js` | Relatório PDF do MR |
 | `js/planta.js` | pdf.js, zoom, arraste, traço da caneta e camada das regiões |
 | `js/geometria.js` | Área, ponto dentro do contorno, simplificação do traço, posição do número |
 | `js/cores.js` | Paleta dos caminhões |
-| `js/db.js` | IndexedDB (pranchas, mrs, caminhoes, regioes, meta) |
+| `js/db.js` | IndexedDB (obras, cadastros, mrs, caminhoes, regioes, pranchas, meta) |
 | `js/ui.js`, `js/util.js` | Modais, ícones e utilidades |
 | `sw.js`, `manifest.webmanifest` | PWA (offline e instalação) |
 
@@ -53,5 +60,7 @@ PWA para iPad com Apple Pencil: substitui o Mapa de Rastreamento (MR) de concret
 | Biblioteca | Versão | Arquivos |
 |---|---|---|
 | pdf.js (`pdfjs-dist`, build legacy) | 4.10.38 | `vendor/pdf.min.mjs`, `vendor/pdf.worker.min.mjs` |
+| jsPDF | 2.5.2 | `vendor/jspdf.umd.min.js` |
+| jspdf-autotable | 3.8.4 | `vendor/jspdf.plugin.autotable.min.js` |
 | Poppins (títulos, licença OFL) | Google Fonts | `fonts/Poppins-*.ttf`, `fonts/OFL-Poppins.txt` |
 | Open Sans (texto, licença OFL) | googlefonts/opensans | `fonts/OpenSans-*.ttf`, `fonts/OFL-OpenSans.txt` |

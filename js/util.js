@@ -22,7 +22,55 @@ export function limitarEscala(larguraPt, alturaPt, escala) {
   return e;
 }
 
-const PROPRIEDADES = new Set(['value', 'checked', 'disabled', 'hidden', 'selected']);
+export function bufParaBase64(buf) {
+  const bytes = new Uint8Array(buf);
+  let s = '';
+  const passo = 0x8000;
+  for (let i = 0; i < bytes.length; i += passo) {
+    s += String.fromCharCode.apply(null, bytes.subarray(i, i + passo));
+  }
+  return btoa(s);
+}
+
+export function hexParaRgb(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+export function tamanhoLegivel(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1).replace('.', ',')} MB`;
+}
+
+// Precisa ser chamada direto do toque do usuário, antes de qualquer await:
+// o iOS só abre o menu de compartilhar com gesto ativo.
+export async function compartilharArquivo(arquivo) {
+  if (navigator.canShare && navigator.canShare({ files: [arquivo] })) {
+    try {
+      await navigator.share({ files: [arquivo] });
+      return 'compartilhado';
+    } catch (e) {
+      if (e.name === 'AbortError') return 'cancelado';
+      throw e;
+    }
+  }
+  baixarArquivo(arquivo);
+  return 'baixado';
+}
+
+export function baixarArquivo(arquivo) {
+  const url = URL.createObjectURL(arquivo);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = arquivo.name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+}
+
+const PROPRIEDADES =new Set(['value', 'checked', 'disabled', 'hidden', 'selected']);
 
 export function el(tag, props = {}, ...filhos) {
   const e = document.createElement(tag);

@@ -1,7 +1,15 @@
 // Componentes de interface: ícones, modais, avisos e indicador de carregamento.
-import { el } from './util.js';
+import { el, compartilharArquivo, tamanhoLegivel } from './util.js';
 
 const ICONES = {
+  voltar: '<path d="M15 5l-7 7 7 7"/>',
+  lixo: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+  relatorio: '<path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/>',
+  relogio: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  editar: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/>',
+  caminhao: '<path d="M3 7h10v9H3zM13 10h4l3 3v3h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="16.5" cy="17.5" r="1.8"/>',
+  lista: '<path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01" />',
+  check: '<path d="M5 12.5l4.5 4.5L19 7"/>',
   mais: '<path d="M12 5v14M5 12h14"/>',
   menos: '<path d="M5 12h14"/>',
   ajustar: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
@@ -77,6 +85,59 @@ export function escolher({ titulo, texto, opcoes, classe = '' }) {
     classe: `modal-escolha ${classe}`,
     corpo: texto ? el('p', { class: 'nota' }, texto) : null,
     botoes: opcoes.map((o) => ({ rotulo: o.rotulo, valor: o.valor, classe: o.classe, estilo: o.estilo })),
+  });
+}
+
+export function pedirTexto({ titulo, rotulo, valor = '', placeholder = '', rotuloOk = 'Salvar', perigo = false, maiusculas = false, validar }) {
+  const input = el('input', {
+    class: 'campo', type: 'text', value: valor, placeholder,
+    autocapitalize: maiusculas ? 'characters' : 'sentences',
+    autocomplete: 'off', autocorrect: 'off', spellcheck: 'false', enterkeyhint: 'done',
+  });
+  const erro = el('p', { class: 'erro', hidden: true });
+  const enviar = (fechar) => {
+    const msg = validar?.(input.value);
+    if (msg) {
+      erro.textContent = msg;
+      erro.hidden = false;
+      return;
+    }
+    fechar(input.value);
+  };
+  return abrirModal({
+    titulo,
+    corpo: el('label', { class: 'rotulo-campo' }, rotulo ? el('span', {}, rotulo) : null, input, erro),
+    botoes: [
+      { rotulo: 'Cancelar', valor: null },
+      { rotulo: rotuloOk, classe: perigo ? 'btn-perigo' : 'btn-primario', acao: enviar },
+    ],
+    aoAbrir: (caixa, fechar) => {
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          enviar(fechar);
+        }
+      });
+      input.addEventListener('input', () => { erro.hidden = true; });
+      input.focus();
+      input.select();
+    },
+  });
+}
+
+// Arquivo pronto → botão "Compartilhar" (o toque abre o menu do iOS).
+// Resolve com 'compartilhado' | 'cancelado' | 'baixado' | null (fechou).
+export function oferecerArquivo(arquivo, { titulo, texto }) {
+  return abrirModal({
+    titulo,
+    corpo: el('div', { class: 'modal-corpo' },
+      texto ? el('p', {}, texto) : null,
+      el('div', { class: 'nome-arquivo' }, arquivo.name),
+      el('p', { class: 'nota' }, tamanhoLegivel(arquivo.size))),
+    botoes: [
+      { rotulo: 'Fechar', valor: null },
+      { rotulo: 'Compartilhar', classe: 'btn-primario', acao: (fechar) => fechar(compartilharArquivo(arquivo)) },
+    ],
   });
 }
 
