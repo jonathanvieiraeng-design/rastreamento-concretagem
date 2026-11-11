@@ -812,3 +812,10 @@ select.campo { -webkit-appearance: none; appearance: none; background-image: url
 .bloco-backup.atrasado { border-color: var(--ouro); background: #FBF6EA; }
 .aviso-backup { color: #7A5A00 !important; font-weight: 700; }
 .botoes-backup { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* ---- como usar ---- */
+.ajuda { max-width: 820px; }
+.secao-ajuda { display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 12px; background: var(--superficie); border: 1px solid var(--borda); }
+.secao-ajuda h2 { font-size: 19px; color: var(--primario); }
+.secao-ajuda p { margin: 0; line-height: 1.5; }
+.lista-ajuda { margin: 0; padding-left: 24px; display: flex; flex-direction: column; gap: 6px; line-height: 1.5; }

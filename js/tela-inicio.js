@@ -5,6 +5,7 @@ import { el } from './util.js';
 import { icone } from './ui.js';
 import { TIPOS, STATUS_MR, fmtDataBr, fmtNumero, fmtTc, resumoMr } from './mr.js';
 import { buscar } from './busca.js';
+import { VERSAO_APP } from './ajuda.js';
 import { fazerBackup, restaurarBackup, ultimoBackup, fmtDataHoraIso, DIAS_LEMBRETE } from './backup.js';
 
 const LOGO = 'assets/logo-arcoirismar.png';
@@ -139,8 +140,9 @@ export async function telaInicio() {
       caixaLista,
       blocoBackup,
       el('div', { class: 'acoes-inicio' },
-        el('a', { class: 'btn', href: '#/cadastros' }, icone('lista'), 'Cadastros de elementos')),
-      el('p', { class: 'rodape-versao' }, 'Construtora Arco-Íris-Mar · uso offline · Etapa 5')));
+        el('a', { class: 'btn', href: '#/cadastros' }, icone('lista'), 'Cadastros de elementos'),
+        el('a', { class: 'btn', href: '#/ajuda' }, icone('legenda'), 'Como usar')),
+      el('p', { class: 'rodape-versao' }, `Construtora Arco-Íris-Mar · uso offline · versão ${VERSAO_APP}`)));
   montar(raiz);
   desenharLista();
   desenharBusca();

@@ -2,7 +2,7 @@
 
 PWA para iPad com Apple Pencil: substitui o Mapa de Rastreamento (MR) de concretagem feito em Excel. Funciona 100% offline depois de instalado. Os dados ficam só no aparelho (IndexedDB).
 
-> **Estado atual: Etapa 5** — MR de Pilares e de Laje, resultados de TCP (MPa), busca reversa (NF, Bet, elemento) e backup/restauração. Falta a Etapa 6 (instruções finais).
+> **Versão 1.0** — MR de Pilares e de Laje, relatório PDF (Laje com mapa em A3), resultados de TCP (MPa), busca reversa e backup. Instruções de uso no próprio app (tela "Como usar", com PDF para salvar ou imprimir).
 
 ## Publicar no GitHub Pages
 
@@ -22,9 +22,10 @@ PWA para iPad com Apple Pencil: substitui o Mapa de Rastreamento (MR) de concret
 ## Publicar uma atualização
 
 1. Altere os arquivos.
-2. Em `sw.js`, **aumente a versão**: `mr-v7` → `mr-v8`. Sem isso o app instalado não percebe a mudança.
+2. Em `sw.js`, **aumente a versão**: `mr-v8` → `mr-v9`. Sem isso o app instalado não percebe a mudança.
 3. Se criou um arquivo novo, inclua-o na lista `ARQUIVOS` do `sw.js`.
-4. Faça commit e push. Ao abrir o app com internet, aparece a faixa **"Nova versão disponível — Recarregar"**.
+4. Se a mudança for visível para o usuário, atualize o texto em `js/ajuda.js` (e `VERSAO_APP`, se for uma versão nova).
+5. Faça commit e push. Ao abrir o app com internet, aparece a faixa **"Nova versão disponível — Recarregar"**.
 
 ## Desenho na prancha (regras de entrada)
 
@@ -50,6 +51,7 @@ PWA para iPad com Apple Pencil: substitui o Mapa de Rastreamento (MR) de concret
 | `js/tela-tcs.js` | Resultados de TCP (teste de corpo de prova) 7/28/60 dias (MPa) de um MR; status "TCPs completos" com 7 e 28 dias em todos |
 | `js/busca.js` | Busca reversa: NF, Bet ou elemento → MR e caminhão |
 | `js/backup.js` | Backup .json (com as pranchas) e restauração que junta os dados |
+| `js/ajuda.js` | Tela "Como usar" e PDF das instruções (um único texto para os dois); `VERSAO_APP` |
 | `js/mr.js` | Regras do MR: formatos, valores derivados, listas de elementos |
 | `js/relatorio.js` | Relatório PDF do MR (Laje: página A3 com o mapa e a legenda) |
 | `js/planta.js` | pdf.js, zoom, arraste, traço da caneta e camada das regiões |

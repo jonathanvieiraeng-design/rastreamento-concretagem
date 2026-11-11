@@ -10,7 +10,7 @@ import {
 } from './mr.js';
 
 const LOGO = 'assets/logo-arcoirismar.png';
-const LOGO_PROPORCAO = 1250 / 190;
+export const LOGO_PROPORCAO = 1250 / 190;
 
 let recursos;
 
@@ -42,7 +42,7 @@ async function logoJpeg() {
   return dados;
 }
 
-async function carregarRecursos() {
+export async function carregarRecursos() {
   if (!recursos) {
     const [regular, negrito, titulo, logo] = await Promise.all([
       baixar('fonts/OpenSans-Regular.ttf'), baixar('fonts/OpenSans-Bold.ttf'), baixar('fonts/Poppins-SemiBold.ttf'), logoJpeg(),
@@ -52,12 +52,12 @@ async function carregarRecursos() {
   return recursos;
 }
 
-const AZUL = [11, 66, 109];
-const OURO = [195, 165, 89];
-const TEXTO = [35, 35, 35];
-const MEDIO = [100, 100, 100];
-const LINHA = [221, 216, 204];
-const CLARO = [247, 246, 243];
+export const AZUL = [11, 66, 109];
+export const OURO = [195, 165, 89];
+export const TEXTO = [35, 35, 35];
+export const MEDIO = [100, 100, 100];
+export const LINHA = [221, 216, 204];
+export const CLARO = [247, 246, 243];
 const ALERTA = [179, 38, 30];
 
 const dois = (n) => String(n).padStart(2, '0');
@@ -65,9 +65,10 @@ function fmtDataHora(d) {
   return `${dois(d.getDate())}/${dois(d.getMonth() + 1)}/${d.getFullYear()} ${dois(d.getHours())}:${dois(d.getMinutes())}`;
 }
 
-export async function gerarRelatorioMr(mr, obra, caminhoes, extra = {}) {
+// Documento jsPDF com as fontes da identidade (Open Sans e Poppins) já registradas.
+export async function novoDocumento(opcoes) {
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', ...opcoes });
   const f = await carregarRecursos();
   doc.addFileToVFS('OpenSans-Regular.ttf', f.regular);
   doc.addFont('OpenSans-Regular.ttf', 'OpenSans', 'normal');
@@ -75,6 +76,11 @@ export async function gerarRelatorioMr(mr, obra, caminhoes, extra = {}) {
   doc.addFont('OpenSans-Bold.ttf', 'OpenSans', 'bold');
   doc.addFileToVFS('Poppins-SemiBold.ttf', f.titulo);
   doc.addFont('Poppins-SemiBold.ttf', 'Poppins', 'normal');
+  return { doc, f };
+}
+
+export async function gerarRelatorioMr(mr, obra, caminhoes, extra = {}) {
+  const { doc, f } = await novoDocumento({ orientation: 'landscape' });
 
   const L = 297;
   const A = 210;

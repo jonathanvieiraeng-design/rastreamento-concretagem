@@ -7,6 +7,7 @@ import { telaCadastros, telaFormCadastro } from './tela-cadastros.js';
 import { telaMrPilares } from './tela-mr-pilares.js';
 import { telaMrLaje } from './tela-mr-laje.js';
 import { telaTcs } from './tela-tcs.js';
+import { telaAjuda } from './ajuda.js';
 import * as db from './db.js';
 
 // MR de teste da Etapa 2 (protótipo do desenho): apagado na primeira abertura desta versão.
@@ -33,6 +34,7 @@ async function rota() {
       else location.hash = '#/';
     } else if (p[0] === 'cadastros' && p[1]) await telaFormCadastro(p[1] === 'novo' ? null : p[1]);
     else if (p[0] === 'cadastros') await telaCadastros();
+    else if (p[0] === 'ajuda') telaAjuda();
     else await telaInicio();
   } catch (e) {
     console.error(e);
