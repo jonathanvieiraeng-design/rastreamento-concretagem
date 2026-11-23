@@ -169,3 +169,32 @@ export function statusComTcs(status, caminhoes) {
   if (status === 'campo') return status;
   return tcsCompletos(caminhoes) ? 'tcs' : 'concluido';
 }
+
+// ---------- dimensões dos pilares (só MR de Pilares) ----------
+// Medidas informadas pelo usuário (m). Altura fixa.
+export const LADOS_A = [0.20, 0.25, 1.25, 1.45, 1.50, 1.70, 1.80, 2.00, 2.30, 2.34];
+export const LADOS_B = [0.20, 0.25, 0.30, 0.50];
+export const ALTURA_PILAR = 2.70;
+
+// d = { a, b } em m → m³ (ou null se faltar medida)
+export function volumePilar(d) {
+  if (!d || !(d.a > 0) || !(d.b > 0)) return null;
+  return Math.round(d.a * d.b * ALTURA_PILAR * 1000) / 1000;
+}
+
+// Total dos elementos com medida; "concretado" = já ligado a algum caminhão.
+export function resumoPilares(mr, caminhoes) {
+  const dims = mr.dimensoes || {};
+  const usados = mapaElementos(caminhoes);
+  let total = 0;
+  let concretado = 0;
+  const semMedida = [];
+  for (const e of mr.elementos || []) {
+    const v = volumePilar(dims[e]);
+    if (v == null) { semMedida.push(e); continue; }
+    total += v;
+    if (usados.has(e)) concretado += v;
+  }
+  const r3 = (x) => Math.round(x * 1000) / 1000;
+  return { total: r3(total), concretado: r3(concretado), falta: r3(total - concretado), comMedida: (mr.elementos || []).length - semMedida.length, semMedida };
+}

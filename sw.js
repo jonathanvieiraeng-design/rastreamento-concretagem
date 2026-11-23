@@ -1,6 +1,6 @@
 // Service worker: guarda o app inteiro para funcionar offline.
-// A cada versão publicada, AUMENTE o número abaixo (mr-v9, v3…).
-const VERSAO = 'mr-v9';
+// A cada versão publicada, AUMENTE o número abaixo (mr-v10, v3…).
+const VERSAO = 'mr-v10';
 
 const ARQUIVOS = [
   './',

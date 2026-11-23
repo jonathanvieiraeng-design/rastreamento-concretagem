@@ -58,6 +58,7 @@ const CONTEUDO = [
         'NF repetida em dois caminhões: aparece um aviso amarelo.',
         'Lixeira do caminhão: exclui e renumera os caminhões seguintes.',
         'O painel mostra volume total, início, término e os elementos ainda sem caminhão ("Não vinculados").',
+        'Volume dos pilares: toque em "Dimensões dos pilares" e escolha o Lado A e o Lado B de cada pilar (altura fixa de 2,70 m). O painel mostra o volume total, o já concretado e quanto falta concretar, que diminui conforme os pilares são ligados aos caminhões; use para pedir o complemento. "Copiar medidas do MR anterior desta obra" reaproveita as medidas do pavimento anterior.',
       ] },
     ],
   },

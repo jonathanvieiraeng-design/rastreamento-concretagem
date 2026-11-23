@@ -825,3 +825,16 @@ select.campo { -webkit-appearance: none; appearance: none; background-image: url
 .caixa-cartao-mr .cartao-mr { flex: 1; padding-right: 64px; }
 .btn-excluir-mr { position: absolute; right: 8px; bottom: 8px; width: 48px; height: 48px; color: var(--texto-3); }
 .btn-excluir-mr:active { color: var(--perigo); }
+
+/* ---- dimensões e volume dos pilares ---- */
+.bloco-volume-pilares { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--borda); padding-top: 12px; }
+.bloco-volume-pilares .btn { min-height: 48px; }
+.caixa-resumo.caixa-destaque { background: #FBF6EA; border-color: var(--ouro); }
+.caixa-resumo.caixa-destaque strong { color: var(--ouro-escuro); }
+.tabela-dim-caixa { max-height: 55vh; overflow-y: auto; }
+.tabela-dim { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.tabela-dim th { position: sticky; top: 0; text-align: left; padding: 8px; background: var(--primario); color: #fff; font-size: 14px; white-space: nowrap; }
+.tabela-dim td { padding: 4px 8px; border-top: 1px solid var(--superficie-2); }
+.tabela-dim .nome-dim { font-weight: 700; white-space: nowrap; }
+.campo-dim { min-height: 46px; min-width: 96px; font-size: 17px; }
+.vol-dim { white-space: nowrap; font-weight: 600; }

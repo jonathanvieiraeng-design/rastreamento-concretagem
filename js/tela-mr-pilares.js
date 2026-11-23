@@ -7,6 +7,7 @@ import { icone, abrirModal, confirmar, toast } from './ui.js';
 import {
   STATUS_MR, statusComTcs, duracao, fmtDuracao, fmtNumero, fmtDataBr, acumulados, resumoMr,
   mapaElementos, naoVinculados, normalizarElemento,
+  LADOS_A, LADOS_B, ALTURA_PILAR, volumePilar, resumoPilares, compararNatural,
 } from './mr.js';
 import {
   novoCaminhao, criarGravador, camposCaminhao, avisoNfRepetida, excluirCaminhao, camposFaltando,
@@ -129,12 +130,111 @@ export async function telaMrPilares(id, camId = null) {
           ? el('div', { class: 'chips-falta' }, falta.map((e) => el('span', { class: 'chip-el falta' }, e)))
           : el('p', { class: 'ok-painel' }, icone('check'), 'Todos os elementos têm caminhão.'))
         : el('p', { class: 'nota' }, 'Este MR não tem lista de elementos. Use "elemento livre" em cada caminhão ou edite o cabeçalho.'),
+      blocoVolumePilares(),
       el('div', { class: 'acoes-painel' },
         mr.status === 'campo'
           ? el('button', { type: 'button', class: 'btn btn-primario', onclick: concluir }, icone('check'), 'Concluir concretagem')
           : el('button', { type: 'button', class: 'btn', onclick: reabrir }, 'Reabrir (voltar a "Em campo")'),
         el('a', { class: 'btn', href: `#/mr/${mr.id}/tcs` }, icone('tc'), 'Resultados de TCP (MPa)'),
         el('button', { type: 'button', class: 'btn', onclick: gerarPdf }, icone('relatorio'), 'Relatório PDF')));
+  }
+
+  // ---------- volume dos pilares (dimensões × altura fixa) ----------
+  function blocoVolumePilares() {
+    const p = resumoPilares(mr, caminhoes);
+    const caixa = (rotulo, valor, classe = '') => el('div', { class: `caixa-resumo ${classe}` }, el('small', {}, rotulo), el('strong', {}, valor));
+    const m3 = (v) => `${fmtNumero(v, 2)} m³`;
+    return el('section', { class: 'bloco-volume-pilares' },
+      el('h2', { class: 'titulo-painel' }, `Volume dos pilares (altura ${fmtNumero(ALTURA_PILAR, 2)} m)`),
+      p.comMedida
+        ? el('div', { class: 'grade-resumo' },
+          caixa('Total', m3(p.total)),
+          caixa('Já concretado', m3(p.concretado)),
+          caixa('Falta concretar', m3(p.falta), 'caixa-destaque'),
+          caixa('Com medida', `${p.comMedida} de ${mr.elementos.length}`))
+        : el('p', { class: 'nota' }, 'Cadastre as medidas para ver o volume total e quanto falta concretar.'),
+      p.comMedida && p.semMedida.length
+        ? el('p', { class: 'nota' }, `Sem medida (fora da conta): ${p.semMedida.join('; ')}`)
+        : '',
+      el('button', { type: 'button', class: 'btn', onclick: editarDimensoes }, icone('ajustar'), 'Dimensões dos pilares'));
+  }
+
+  async function editarDimensoes() {
+    mr.dimensoes = mr.dimensoes || {};
+    const elementos = [...mr.elementos].sort(compararNatural);
+    const opcoes = (lista, atual) => [el('option', { value: '' }, '—'),
+      ...lista.map((v) => el('option', { value: String(v), selected: atual === v }, fmtNumero(v, 2)))];
+    const totalModal = el('strong', {});
+    const linhas = new Map(); // elemento → { a, b, vol }
+
+    const gravar = () => db.gravar('mrs', mr).catch((e) => toast(`Erro ao gravar: ${e.message}`));
+    function atualizarTotal() {
+      const p = resumoPilares(mr, caminhoes);
+      totalModal.textContent = `Total: ${fmtNumero(p.total, 2)} m³ · ${p.comMedida} de ${mr.elementos.length} com medida`;
+    }
+    function linha(e) {
+      const d = mr.dimensoes[e] || {};
+      const sa = el('select', { class: 'campo campo-dim', 'aria-label': `Lado A de ${e}` }, opcoes(LADOS_A, d.a));
+      const sb = el('select', { class: 'campo campo-dim', 'aria-label': `Lado B de ${e}` }, opcoes(LADOS_B, d.b));
+      const vol = el('span', { class: 'vol-dim' });
+      const mostrar = () => { const v = volumePilar(mr.dimensoes[e]); vol.textContent = v == null ? '—' : `${fmtNumero(v, 3)} m³`; };
+      const mudou = () => {
+        const a = sa.value ? Number(sa.value) : null;
+        const b = sb.value ? Number(sb.value) : null;
+        if (a == null && b == null) delete mr.dimensoes[e];
+        else mr.dimensoes[e] = { a, b };
+        mostrar();
+        atualizarTotal();
+        gravar();
+      };
+      sa.addEventListener('change', mudou);
+      sb.addEventListener('change', mudou);
+      mostrar();
+      linhas.set(e, { sa, sb, mostrar });
+      return el('tr', {}, el('td', { class: 'nome-dim' }, e), el('td', {}, sa), el('td', {}, sb), el('td', {}, vol));
+    }
+
+    // copia do MR de Pilares anterior da mesma obra, só para pilares sem medida aqui
+    async function copiarAnterior() {
+      const todos = await db.listar('mrs');
+      const anteriores = todos
+        .filter((m) => m.id !== mr.id && m.tipo === 'pilares' && m.obraId === mr.obraId && m.dimensoes && Object.keys(m.dimensoes).length)
+        .sort((x, y) => (y.data || '').localeCompare(x.data || '') || (y.criadoEm || '').localeCompare(x.criadoEm || ''));
+      const ant = anteriores.find((m) => (m.data || '') <= (mr.data || '')) || anteriores[0];
+      if (!ant) { toast('Nenhum MR de Pilares anterior desta obra tem medidas.'); return; }
+      let n = 0;
+      for (const e of elementos) {
+        const d = ant.dimensoes[e];
+        if (!mr.dimensoes[e] && d) {
+          mr.dimensoes[e] = { a: d.a ?? null, b: d.b ?? null };
+          const l = linhas.get(e);
+          l.sa.value = d.a != null ? String(d.a) : '';
+          l.sb.value = d.b != null ? String(d.b) : '';
+          l.mostrar();
+          n++;
+        }
+      }
+      atualizarTotal();
+      await gravar();
+      toast(n ? `${n} medida(s) copiada(s) do MR de ${fmtDataBr(ant.data)} (${ant.local}).` : `Nada a copiar do MR de ${fmtDataBr(ant.data)}: os pilares com o mesmo nome já têm medida aqui ou não têm lá.`);
+    }
+
+    atualizarTotal();
+    await abrirModal({
+      titulo: 'Dimensões dos pilares',
+      classe: 'modal-largo',
+      corpo: el('div', { class: 'modal-corpo' },
+        el('p', { class: 'nota' }, `Escolha o Lado A e o Lado B de cada pilar (m). Altura fixa: ${fmtNumero(ALTURA_PILAR, 2)} m. Grava sozinho.`),
+        elementos.length
+          ? el('div', { class: 'tabela-rolavel tabela-dim-caixa' }, el('table', { class: 'tabela-dim' },
+            el('thead', {}, el('tr', {}, el('th', {}, 'Elemento'), el('th', {}, 'Lado A (m)'), el('th', {}, 'Lado B (m)'), el('th', {}, 'Volume'))),
+            el('tbody', {}, elementos.map(linha))))
+          : el('p', {}, 'Este MR não tem elementos. Edite o cabeçalho para colocar a lista.'),
+        el('p', {}, totalModal),
+        el('button', { type: 'button', class: 'btn', onclick: copiarAnterior }, icone('lista'), 'Copiar medidas do MR anterior desta obra')),
+      botoes: [{ rotulo: 'Concluir', classe: 'btn-primario', valor: true }],
+    });
+    desenharPainel();
   }
 
   // ---------- ações ----------

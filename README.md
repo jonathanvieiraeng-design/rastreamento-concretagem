@@ -22,7 +22,7 @@ PWA para iPad com Apple Pencil: substitui o Mapa de Rastreamento (MR) de concret
 ## Publicar uma atualização
 
 1. Altere os arquivos.
-2. Em `sw.js`, **aumente a versão**: `mr-v9` → `mr-v10`. Sem isso o app instalado não percebe a mudança.
+2. Em `sw.js`, **aumente a versão**: `mr-v10` → `mr-v11`. Sem isso o app instalado não percebe a mudança.
 3. Se criou um arquivo novo, inclua-o na lista `ARQUIVOS` do `sw.js`.
 4. Se a mudança for visível para o usuário, atualize o texto em `js/ajuda.js` (e `VERSAO_APP`, se for uma versão nova).
 5. Faça commit e push. Ao abrir o app com internet, aparece a faixa **"Nova versão disponível — Recarregar"**.
@@ -45,7 +45,7 @@ PWA para iPad com Apple Pencil: substitui o Mapa de Rastreamento (MR) de concret
 | `js/tela-inicio.js` | Lista de MRs com filtro por obra, tipo e mês |
 | `js/tela-form-mr.js` | Cabeçalho do MR (obra, local, data, especificação, elementos, assinaturas) |
 | `js/tela-cadastros.js` | Cadastros de elementos (colar lista "P11; P12; …") |
-| `js/tela-mr-pilares.js` | MR de Pilares: caminhões, horas, chips, conclusão |
+| `js/tela-mr-pilares.js` | MR de Pilares: caminhões, horas, chips, conclusão, dimensões e volume dos pilares (altura fixa 2,70 m) |
 | `js/tela-mr-laje.js` | MR de Laje: prancha, regiões por caminhão (Apple Pencil), painel dos caminhões, conclusão |
 | `js/caminhao.js` | Partes comuns do caminhão (campos, gravação, exclusão com renumeração, relatório) |
 | `js/tela-tcs.js` | Resultados de TCP (teste de corpo de prova) 7/28/60 dias (MPa) de um MR; status "TCPs completos" com 7 e 28 dias em todos |
