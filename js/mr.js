@@ -172,7 +172,7 @@ export function statusComTcs(status, caminhoes) {
 
 // ---------- dimensões dos pilares (só MR de Pilares) ----------
 // Medidas informadas pelo usuário (m). Altura fixa.
-export const LADOS_A = [0.20, 0.25, 1.25, 1.40, 1.45, 1.50, 1.70, 1.80, 2.00, 2.30, 2.34];
+export const LADOS_A = [0.20, 0.25, 1.25, 1.40, 1.45, 1.50, 1.60, 1.70, 1.80, 2.00, 2.30, 2.34];
 export const LADOS_B = [0.20, 0.25, 0.30, 0.50];
 export const ALTURA_PILAR = 2.70;
 
