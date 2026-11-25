@@ -11,7 +11,7 @@ import {
 } from './mr.js';
 import {
   novoCaminhao, criarGravador, camposCaminhao, avisoNfRepetida, excluirCaminhao, camposFaltando,
-  conferirAntesDeConcluir, oferecerRelatorio,
+  conferirAntesDeConcluir, oferecerRelatorio, escolherElementosDoCaminhao, pilaresConcretadosNaLaje,
 } from './caminhao.js';
 import { oferecerBackupAoConcluir } from './backup.js';
 
@@ -23,6 +23,9 @@ export async function telaMrPilares(id, camId = null) {
   const obra = mr.obraId ? await db.obter('obras', mr.obraId) : null;
   const caminhoes = (await db.listarDoMr('caminhoes', id)).sort((a, b) => a.item - b.item);
   mr.elementos = mr.elementos || [];
+  // pilares pendentes que foram concretados depois, junto com uma laje
+  const { naLaje, lajes } = await pilaresConcretadosNaLaje(mr);
+  const concretadosNaLaje = new Set(naLaje.keys());
 
   // ---------- gravação ----------
   const g = criarGravador(caminhoes);
@@ -116,7 +119,7 @@ export async function telaMrPilares(id, camId = null) {
   // ---------- painel ----------
   function desenharPainel() {
     const r = resumoMr(caminhoes);
-    const falta = naoVinculados(mr, caminhoes);
+    const falta = naoVinculados(mr, caminhoes).filter((e) => !naLaje.has(e));
     const caixa = (rotulo, valor) => el('div', { class: 'caixa-resumo' }, el('small', {}, rotulo), el('strong', {}, valor));
     painel.replaceChildren(
       el('div', { class: 'grade-resumo' },
@@ -130,6 +133,13 @@ export async function telaMrPilares(id, camId = null) {
           ? el('div', { class: 'chips-falta' }, falta.map((e) => el('span', { class: 'chip-el falta' }, e)))
           : el('p', { class: 'ok-painel' }, icone('check'), 'Todos os elementos têm caminhão.'))
         : el('p', { class: 'nota' }, 'Este MR não tem lista de elementos. Use "elemento livre" em cada caminhão ou edite o cabeçalho.'),
+      naLaje.size
+        ? el('section', { class: 'bloco-na-laje' },
+          el('h2', { class: 'titulo-painel' }, `Concretados com a laje (${naLaje.size})`),
+          el('p', { class: 'nota' }, `MR de Laje: ${lajes.map((l) => `${l.local} (${fmtDataBr(l.data)})`).join('; ')}`),
+          el('div', { class: 'chips-falta' }, [...naLaje.entries()].sort((a, b) => compararNatural(a[0], b[0]))
+            .map(([e, cs]) => el('span', { class: 'chip-el sel', title: 'caminhão do MR de Laje' }, e, el('small', {}, ` L${cs.map((c) => c.item).join(',')}`)))))
+        : '',
       blocoVolumePilares(),
       el('div', { class: 'acoes-painel' },
         mr.status === 'campo'
@@ -141,7 +151,7 @@ export async function telaMrPilares(id, camId = null) {
 
   // ---------- volume dos pilares (dimensões × altura fixa) ----------
   function blocoVolumePilares() {
-    const p = resumoPilares(mr, caminhoes);
+    const p = resumoPilares(mr, caminhoes, concretadosNaLaje);
     const caixa = (rotulo, valor, classe = '') => el('div', { class: `caixa-resumo ${classe}` }, el('small', {}, rotulo), el('strong', {}, valor));
     const m3 = (v) => `${fmtNumero(v, 2)} m³`;
     return el('section', { class: 'bloco-volume-pilares' },
@@ -169,7 +179,7 @@ export async function telaMrPilares(id, camId = null) {
 
     const gravar = () => db.gravar('mrs', mr).catch((e) => toast(`Erro ao gravar: ${e.message}`));
     function atualizarTotal() {
-      const p = resumoPilares(mr, caminhoes);
+      const p = resumoPilares(mr, caminhoes, concretadosNaLaje);
       totalModal.textContent = `Total: ${fmtNumero(p.total, 2)} m³ · ${p.comMedida} de ${mr.elementos.length} com medida`;
     }
     function linha(e) {
@@ -253,66 +263,7 @@ export async function telaMrPilares(id, camId = null) {
   }
 
   async function escolherElementos(c) {
-    c.elementos = c.elementos || [];
-    const grade = el('div', { class: 'grade-chips' });
-    const cLivre = el('input', { class: 'campo', placeholder: 'Elemento livre (ex.: VIGAS)', autocapitalize: 'characters', autocorrect: 'off', spellcheck: 'false', enterkeyhint: 'done' });
-    const info = el('p', { class: 'nota' });
-
-    function desenhar() {
-      const usados = mapaElementos(caminhoes);
-      info.textContent = `${c.elementos.length} selecionado(s) neste caminhão.`;
-      grade.replaceChildren(...mr.elementos.map((e) => {
-        const sel = c.elementos.includes(e);
-        const outros = (usados.get(e) || []).filter((x) => x.id !== c.id);
-        return el('button', {
-          type: 'button',
-          class: `chip-el chip-toque${sel ? ' sel' : ''}${!sel && outros.length ? ' em-outro' : ''}`,
-          onclick: () => alternar(e, sel, outros),
-        }, e, outros.length ? el('small', {}, ` C${outros.map((x) => x.item).join(',')}`) : null);
-      }));
-    }
-
-    async function alternar(e, sel, outros) {
-      if (sel) {
-        c.elementos = c.elementos.filter((x) => x !== e);
-      } else {
-        if (outros.length && !(await confirmar(
-          `${e} já está no caminhão ${outros.map((x) => x.item).join(', ')}. Vincular também ao caminhão ${c.item} (elemento completado por outro caminhão)?`,
-          { titulo: 'Elemento em outro caminhão', rotuloOk: 'Vincular também' },
-        ))) return;
-        c.elementos = [...c.elementos, e];
-      }
-      await gravarAgora(c);
-      desenhar();
-    }
-
-    async function adicionarLivre() {
-      const e = normalizarElemento(cLivre.value);
-      if (!e) return;
-      cLivre.value = '';
-      if (!mr.elementos.includes(e)) {
-        mr.elementos = [...mr.elementos, e];
-        await db.gravar('mrs', mr);
-      }
-      if (!c.elementos.includes(e)) {
-        const outros = (mapaElementos(caminhoes).get(e) || []).filter((x) => x.id !== c.id);
-        await alternar(e, false, outros);
-      }
-      desenhar();
-    }
-    cLivre.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); adicionarLivre(); } });
-
-    desenhar();
-    await abrirModal({
-      titulo: `Elementos do caminhão ${c.item}`,
-      classe: 'modal-largo',
-      corpo: el('div', { class: 'modal-corpo' },
-        el('p', { class: 'nota' }, 'Toque para marcar ou desmarcar. Os marcados com "C" já estão em outro caminhão.'),
-        mr.elementos.length ? grade : el('p', {}, 'Este MR não tem lista de elementos.'),
-        info,
-        el('div', { class: 'linha-campo' }, cLivre, el('button', { type: 'button', class: 'btn', onclick: adicionarLivre }, icone('mais'), 'Adicionar'))),
-      botoes: [{ rotulo: 'Concluir', classe: 'btn-primario', valor: true }],
-    });
+    await escolherElementosDoCaminhao({ mr, c, caminhoes, gravarAgora });
     desenharLista();
   }
 
@@ -324,7 +275,7 @@ export async function telaMrPilares(id, camId = null) {
       if (!(c.elementos || []).length) f.push('elementos');
       if (f.length) faltas.push(`Caminhão ${c.item}: falta ${f.join(', ')}`);
     }
-    const nv = naoVinculados(mr, caminhoes);
+    const nv = naoVinculados(mr, caminhoes).filter((e) => !naLaje.has(e));
     if (nv.length) faltas.push(`Elementos sem caminhão: ${nv.join('; ')}`);
     if (!caminhoes.length) faltas.push('Nenhum caminhão registrado.');
     if (!(await conferirAntesDeConcluir(faltas, abrirModal))) return;
@@ -346,7 +297,7 @@ export async function telaMrPilares(id, camId = null) {
 
   async function gerarPdf() {
     descarregar();
-    await oferecerRelatorio(mr, obra, caminhoes);
+    await oferecerRelatorio(mr, obra, caminhoes, { naLaje, lajes });
   }
 
   atualizarSubtitulo();

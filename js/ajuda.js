@@ -79,6 +79,7 @@ const CONTEUDO = [
         'Ícone de lista no topo: legenda. Engrenagem: opacidade do preenchimento e trocar a prancha.',
         '"sem reg." em vermelho: caminhão ainda sem região desenhada.',
         'Excluir um caminhão apaga as regiões dele e renumera os seguintes (as cores acompanham o número).',
+        'Pilares concretados junto com a laje: no painel, toque em "Trazer pilares pendentes" e escolha o MR de Pilares; os pilares que ficaram sem caminhão entram neste MR. Durante a concretagem, toque em "Elementos" no cartão do caminhão e marque os pilares que ele concretou. O MR de Pilares e o relatório dele passam a mostrar esses pilares com o caminhão da laje (L1, L2…).',
       ] },
     ],
   },

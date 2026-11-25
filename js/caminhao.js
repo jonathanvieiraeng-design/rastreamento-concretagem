@@ -2,8 +2,8 @@
 // gravação automática, campos (NF, Bet, Vol, HI, HT), exclusão com renumeração e conferência.
 import * as db from './db.js';
 import { el, uid } from './util.js';
-import { icone, alerta, confirmar, toast, carregando, oferecerArquivo, pedirTexto } from './ui.js';
-import { horaAgora, lerNumero, fmtNumero } from './mr.js';
+import { icone, alerta, confirmar, toast, carregando, oferecerArquivo, pedirTexto, abrirModal } from './ui.js';
+import { horaAgora, lerNumero, fmtNumero, mapaElementos, normalizarElemento } from './mr.js';
 
 const ATRASO_GRAVAR = 400;
 
@@ -202,4 +202,91 @@ export async function excluirMrConfirmado(mr) {
   if (mr.pranchaId) await db.excluir('pranchas', mr.pranchaId);
   toast('MR excluído');
   return true;
+}
+
+// Seletor de elementos de um caminhão (chips). Usado pelos MRs de Pilares e de Laje.
+export async function escolherElementosDoCaminhao({ mr, c, caminhoes, gravarAgora }) {
+  c.elementos = c.elementos || [];
+  const grade = el('div', { class: 'grade-chips' });
+  const cLivre = el('input', { class: 'campo', placeholder: 'Elemento livre (ex.: VIGAS)', autocapitalize: 'characters', autocorrect: 'off', spellcheck: 'false', enterkeyhint: 'done' });
+  const info = el('p', { class: 'nota' });
+
+  function desenhar() {
+    const usados = mapaElementos(caminhoes);
+    info.textContent = `${c.elementos.length} selecionado(s) neste caminhão.`;
+    grade.replaceChildren(...mr.elementos.map((e) => {
+      const sel = c.elementos.includes(e);
+      const outros = (usados.get(e) || []).filter((x) => x.id !== c.id);
+      return el('button', {
+        type: 'button',
+        class: `chip-el chip-toque${sel ? ' sel' : ''}${!sel && outros.length ? ' em-outro' : ''}`,
+        onclick: () => alternar(e, sel, outros),
+      }, e, outros.length ? el('small', {}, ` C${outros.map((x) => x.item).join(',')}`) : null);
+    }));
+  }
+
+  async function alternar(e, sel, outros) {
+    if (sel) {
+      c.elementos = c.elementos.filter((x) => x !== e);
+    } else {
+      if (outros.length && !(await confirmar(
+        `${e} já está no caminhão ${outros.map((x) => x.item).join(', ')}. Vincular também ao caminhão ${c.item} (elemento completado por outro caminhão)?`,
+        { titulo: 'Elemento em outro caminhão', rotuloOk: 'Vincular também' },
+      ))) return;
+      c.elementos = [...c.elementos, e];
+    }
+    await gravarAgora(c);
+    desenhar();
+  }
+
+  async function adicionarLivre() {
+    const e = normalizarElemento(cLivre.value);
+    if (!e) return;
+    cLivre.value = '';
+    if (!mr.elementos.includes(e)) {
+      mr.elementos = [...mr.elementos, e];
+      await db.gravar('mrs', mr);
+    }
+    if (!c.elementos.includes(e)) {
+      const outros = (mapaElementos(caminhoes).get(e) || []).filter((x) => x.id !== c.id);
+      await alternar(e, false, outros);
+    }
+    desenhar();
+  }
+  cLivre.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); adicionarLivre(); } });
+
+  desenhar();
+  await abrirModal({
+    titulo: `Elementos do caminhão ${c.item}`,
+    classe: 'modal-largo',
+    corpo: el('div', { class: 'modal-corpo' },
+      el('p', { class: 'nota' }, 'Toque para marcar ou desmarcar. Os marcados com "C" já estão em outro caminhão.'),
+      mr.elementos.length ? grade : el('p', {}, 'Este MR não tem lista de elementos.'),
+      info,
+      el('div', { class: 'linha-campo' }, cLivre, el('button', { type: 'button', class: 'btn', onclick: adicionarLivre }, icone('mais'), 'Adicionar'))),
+    botoes: [{ rotulo: 'Concluir', classe: 'btn-primario', valor: true }],
+  });
+}
+
+// Pilares deste MR de Pilares que foram concretados junto com uma laje (MR de Laje que os "trouxe").
+// Devolve { naLaje: Map(elemento → [caminhões da laje]), lajes: [{ id, local, data }] }.
+export async function pilaresConcretadosNaLaje(mrPilares) {
+  const naLaje = new Map();
+  const lajes = [];
+  const todos = await db.listar('mrs');
+  for (const m of todos) {
+    if (m.tipo !== 'laje' || !(m.origemPilares || []).some((o) => o.mrId === mrPilares.id)) continue;
+    const cams = (await db.listarDoMr('caminhoes', m.id)).sort((a, b) => a.item - b.item);
+    let algum = false;
+    for (const c of cams) {
+      for (const e of c.elementos || []) {
+        if (!(mrPilares.elementos || []).includes(e)) continue;
+        if (!naLaje.has(e)) naLaje.set(e, []);
+        naLaje.get(e).push(c);
+        algum = true;
+      }
+    }
+    if (algum) lajes.push({ id: m.id, local: m.local, data: m.data });
+  }
+  return { naLaje, lajes };
 }

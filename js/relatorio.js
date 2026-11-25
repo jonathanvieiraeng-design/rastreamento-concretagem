@@ -155,7 +155,8 @@ export async function gerarRelatorioMr(mr, obra, caminhoes, extra = {}) {
 
   // ---- tabela de caminhões ----
   const acum = acumulados(ordenados);
-  const comElementos = mr.tipo === 'pilares';
+  // Laje também tem elementos quando pilares foram concretados junto com ela
+  const comElementos = mr.tipo === 'pilares' || (mr.tipo === 'laje' && (mr.elementos || []).length > 0);
   const ehLaje = mr.tipo === 'laje';
   const cab = ['Item', 'NF', 'Bet', 'HI', 'HT', 'Descarga', 'Vol (m³)', 'Acum. (m³)', 'TCP 7d (MPa)', 'TCP 28d (MPa)', 'TCP 60d (MPa)'];
   if (comElementos) cab.push('Elementos');
@@ -236,16 +237,20 @@ export async function gerarRelatorioMr(mr, obra, caminhoes, extra = {}) {
   if (comElementos) {
     const mapa = mapaElementos(ordenados);
     const todos = [...new Set([...(mr.elementos || []), ...mapa.keys()])].sort(compararNatural);
-    const falta = naoVinculados(mr, ordenados);
+    // pilares deste MR concretados depois, junto com uma laje: extra.naLaje = Map(elemento → [caminhões da laje])
+    const naLaje = extra.naLaje || new Map();
+    const falta = naoVinculados(mr, ordenados).filter((e) => !naLaje.has(e));
     if (y > A - 40) { doc.addPage(); y = 18; }
     titulo(doc, 'Rastreamento por elemento', M, y);
     y += 2;
     // duas tabelas lado a lado para economizar papel
     const linhasEl = todos.map((e) => {
-      const cs = mapa.get(e) || [];
+      let cs = mapa.get(e) || [];
+      const daLaje = !cs.length && naLaje.has(e);
+      if (daLaje) cs = naLaje.get(e);
       return [
         e,
-        cs.length ? cs.map((c) => c.item).join(' + ') : 'SEM CAMINHÃO',
+        cs.length ? cs.map((c) => (daLaje ? `L${c.item}` : c.item)).join(' + ') : 'SEM CAMINHÃO',
         cs.map((c) => (c.nf != null ? c.nf : '—')).join(' + '),
         cs.map((c) => c.bet || '—').join(' + '),
         cs.map((c) => `${c.hi || '—'}–${c.ht || '—'}`).join(' + '),
@@ -292,6 +297,15 @@ export async function gerarRelatorioMr(mr, obra, caminhoes, extra = {}) {
       doc.setTextColor(...MEDIO);
       doc.text('Nenhum elemento informado.', M, y);
       y += 6;
+    }
+    if (naLaje.size && todos.some((e) => !(mapa.get(e) || []).length && naLaje.has(e))) {
+      doc.setFont('OpenSans', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(...MEDIO);
+      const origem = (extra.lajes || []).map((l) => `${l.local} (${fmtDataBr(l.data)})`).join('; ');
+      const t = doc.splitTextToSize(`L = caminhão do MR de Laje${origem ? `: ${origem}` : ''}. Pilar concretado junto com a laje.`, L - 2 * M);
+      doc.text(t, M, y);
+      y += 4.2 * t.length + 2;
     }
     if (falta.length) {
       doc.setFont('OpenSans', 'bold');

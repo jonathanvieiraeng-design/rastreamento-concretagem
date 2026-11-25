@@ -838,3 +838,8 @@ select.campo { -webkit-appearance: none; appearance: none; background-image: url
 .tabela-dim .nome-dim { font-weight: 700; white-space: nowrap; }
 .campo-dim { min-height: 46px; min-width: 96px; font-size: 17px; }
 .vol-dim { white-space: nowrap; font-weight: 600; }
+
+/* ---- pilares concretados junto com a laje ---- */
+.bloco-pilares-laje, .bloco-na-laje { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--borda); padding-top: 12px; }
+.bloco-pilares-laje .btn { min-height: 48px; }
+.cartao-ativo .linha-elementos { flex-direction: column; align-items: stretch; }

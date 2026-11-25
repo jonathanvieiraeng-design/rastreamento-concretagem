@@ -6,10 +6,12 @@ import { corDoItem } from './cores.js';
 import { el, uid } from './util.js';
 import { icone, abrirModal, confirmar, escolher, toast, carregando, alerta } from './ui.js';
 import { montar, ir } from './nav.js';
-import { STATUS_MR, statusComTcs, duracao, fmtDuracao, fmtNumero, fmtDataBr, acumulados, resumoMr } from './mr.js';
+import {
+  STATUS_MR, statusComTcs, duracao, fmtDuracao, fmtNumero, fmtDataBr, acumulados, resumoMr, mapaElementos, naoVinculados,
+} from './mr.js';
 import {
   novoCaminhao, criarGravador, camposCaminhao, avisoNfRepetida, excluirCaminhao, camposFaltando,
-  conferirAntesDeConcluir, oferecerRelatorio,
+  conferirAntesDeConcluir, oferecerRelatorio, escolherElementosDoCaminhao,
 } from './caminhao.js';
 import { oferecerBackupAoConcluir } from './backup.js';
 
@@ -29,6 +31,7 @@ export async function telaMrLaje(id, camId = null) {
   let legendaAberta = false;
   let planta = null;
   if (mr.caminhaoAtivoId && !caminhoes.some((c) => c.id === mr.caminhaoAtivoId)) mr.caminhaoAtivoId = null;
+  mr.elementos = mr.elementos || []; // pilares concretados junto com a laje (opcional)
 
   const g = criarGravador(caminhoes);
   const caminhaoPorId = (cid) => caminhoes.find((c) => c.id === cid);
@@ -195,7 +198,55 @@ export async function telaMrLaje(id, camId = null) {
       el('div', { class: 'linha-horas' },
         k.hi, k.ht,
         el('div', { class: 'derivado' }, el('span', { class: 'rotulo-mini' }, 'Descarga'), derivAtivo.dur),
-        el('div', { class: 'derivado' }, el('span', { class: 'rotulo-mini' }, 'Acumulado'), derivAtivo.acum))));
+        el('div', { class: 'derivado' }, el('span', { class: 'rotulo-mini' }, 'Acumulado'), derivAtivo.acum)),
+      el('div', { class: 'linha-elementos' },
+        el('div', { class: 'chips-caminhao' }, (c.elementos || []).length
+          ? c.elementos.map((e) => el('span', { class: 'chip-el sel' }, e))
+          : el('span', { class: 'nota' }, mr.elementos.length ? 'Nenhum pilar neste caminhão.' : 'Sem pilares junto com a laje.')),
+        el('button', {
+          type: 'button', class: 'btn btn-elementos',
+          onclick: async () => { await escolherElementosDoCaminhao({ mr, c, caminhoes, gravarAgora: g.agora }); desenharAtivo(); atualizar(); },
+        }, icone('lista'), `Elementos${c.elementos?.length ? ` (${c.elementos.length})` : ''}`))));
+  }
+
+  function blocoPilares() {
+    const falta = naoVinculados(mr, caminhoes);
+    const origens = (mr.origemPilares || []).map((o) => `${o.local} (${fmtDataBr(o.data)})`).join('; ');
+    return el('section', { class: 'bloco-pilares-laje' },
+      el('h2', { class: 'titulo-painel' }, mr.elementos.length
+        ? `Pilares junto com a laje: ${mr.elementos.length - falta.length} de ${mr.elementos.length} vinculados`
+        : 'Pilares junto com a laje'),
+      origens ? el('p', { class: 'nota' }, `Trazidos de: ${origens}`) : '',
+      mr.elementos.length
+        ? (falta.length
+          ? el('div', { class: 'chips-falta' }, falta.map((e) => el('span', { class: 'chip-el falta' }, e)))
+          : el('p', { class: 'ok-painel' }, icone('check'), 'Todos os pilares têm caminhão.'))
+        : el('p', { class: 'nota' }, 'Se pilares forem concretados com esta laje, traga os pendentes do MR de Pilares e marque em "Elementos" no cartão do caminhão.'),
+      el('button', { type: 'button', class: 'btn', onclick: trazerPendentes }, icone('lista'), 'Trazer pilares pendentes'));
+  }
+
+  // Traz os elementos sem caminhão de um MR de Pilares da mesma obra (concretados junto com a laje).
+  async function trazerPendentes() {
+    const todos = (await db.listar('mrs')).filter((m) => m.tipo === 'pilares' && m.obraId === mr.obraId);
+    const opcoes = [];
+    for (const m of todos.sort((x, y) => (y.data || '').localeCompare(x.data || ''))) {
+      const pend = naoVinculados(m, await db.listarDoMr('caminhoes', m.id));
+      if (pend.length) opcoes.push({ rotulo: `${m.local} · ${fmtDataBr(m.data)} · ${pend.length} pendente(s)`, valor: { m, pend } });
+    }
+    if (!opcoes.length) {
+      await alerta('Nenhum MR de Pilares desta obra tem elementos sem caminhão.', 'Trazer pilares pendentes');
+      return;
+    }
+    const esc = await escolher({ titulo: 'Trazer pilares pendentes de qual MR de Pilares?', opcoes: [...opcoes, { rotulo: 'Cancelar', valor: null }] });
+    if (!esc) return;
+    const novos = esc.pend.filter((e) => !mr.elementos.includes(e));
+    mr.elementos = [...mr.elementos, ...novos];
+    const origens = (mr.origemPilares || []).filter((o) => o.mrId !== esc.m.id);
+    mr.origemPilares = [...origens, { mrId: esc.m.id, local: esc.m.local, data: esc.m.data }];
+    await db.gravar('mrs', mr);
+    desenharAtivo();
+    atualizar();
+    toast(novos.length ? `${novos.length} pilar(es) trazido(s) de "${esc.m.local}".` : 'Esses pilares já estavam neste MR.');
   }
 
   function atualizar() {
@@ -257,6 +308,7 @@ export async function telaMrLaje(id, camId = null) {
       semRegiao.length
         ? el('p', { class: 'aviso-campo' }, `Sem região desenhada: caminhão ${semRegiao.map((c) => c.item).join(', ')}.`)
         : '',
+      blocoPilares(),
       el('div', { class: 'acoes-painel' },
         mr.status === 'campo'
           ? el('button', { type: 'button', class: 'btn btn-primario', onclick: concluir }, icone('check'), 'Concluir concretagem')
@@ -337,6 +389,8 @@ export async function telaMrLaje(id, camId = null) {
       if (!regioesDe(c).length) f.push('região desenhada');
       if (f.length) faltas.push(`Caminhão ${c.item}: falta ${f.join(', ')}`);
     }
+    const pilSem = naoVinculados(mr, caminhoes);
+    if (pilSem.length) faltas.push(`Pilares sem caminhão: ${pilSem.join('; ')}`);
     if (!prancha) faltas.push('Nenhuma prancha carregada.');
     if (!caminhoes.length) faltas.push('Nenhum caminhão registrado.');
     if (!(await conferirAntesDeConcluir(faltas, abrirModal))) return;

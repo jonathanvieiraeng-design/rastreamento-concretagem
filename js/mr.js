@@ -183,7 +183,8 @@ export function volumePilar(d) {
 }
 
 // Total dos elementos com medida; "concretado" = já ligado a algum caminhão.
-export function resumoPilares(mr, caminhoes) {
+// outrosConcretados: elementos concretados fora deste MR (ex.: junto com a laje)
+export function resumoPilares(mr, caminhoes, outrosConcretados = new Set()) {
   const dims = mr.dimensoes || {};
   const usados = mapaElementos(caminhoes);
   let total = 0;
@@ -193,7 +194,7 @@ export function resumoPilares(mr, caminhoes) {
     const v = volumePilar(dims[e]);
     if (v == null) { semMedida.push(e); continue; }
     total += v;
-    if (usados.has(e)) concretado += v;
+    if (usados.has(e) || outrosConcretados.has(e)) concretado += v;
   }
   const r3 = (x) => Math.round(x * 1000) / 1000;
   return { total: r3(total), concretado: r3(concretado), falta: r3(total - concretado), comMedida: (mr.elementos || []).length - semMedida.length, semMedida };
