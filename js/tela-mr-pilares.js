@@ -7,7 +7,7 @@ import { icone, abrirModal, confirmar, toast } from './ui.js';
 import {
   STATUS_MR, statusComTcs, duracao, fmtDuracao, fmtNumero, fmtDataBr, acumulados, resumoMr,
   mapaElementos, naoVinculados, normalizarElemento,
-  LADOS_A, LADOS_B, ALTURA_PILAR, volumePilar, resumoPilares, compararNatural,
+  LADOS_A, LADOS_B, ALTURA_PILAR, volumePilar, resumoPilares, compararNatural, marcadosComLaje,
 } from './mr.js';
 import {
   novoCaminhao, criarGravador, camposCaminhao, avisoNfRepetida, excluirCaminhao, camposFaltando,
@@ -119,7 +119,8 @@ export async function telaMrPilares(id, camId = null) {
   // ---------- painel ----------
   function desenharPainel() {
     const r = resumoMr(caminhoes);
-    const falta = naoVinculados(mr, caminhoes).filter((e) => !naLaje.has(e));
+    const marcados = marcadosComLaje(mr, caminhoes).filter((e) => !naLaje.has(e));
+    const falta = naoVinculados(mr, caminhoes).filter((e) => !naLaje.has(e) && !marcados.includes(e));
     const caixa = (rotulo, valor) => el('div', { class: 'caixa-resumo' }, el('small', {}, rotulo), el('strong', {}, valor));
     painel.replaceChildren(
       el('div', { class: 'grade-resumo' },
@@ -133,6 +134,14 @@ export async function telaMrPilares(id, camId = null) {
           ? el('div', { class: 'chips-falta' }, falta.map((e) => el('span', { class: 'chip-el falta' }, e)))
           : el('p', { class: 'ok-painel' }, icone('check'), 'Todos os elementos têm caminhão.'))
         : el('p', { class: 'nota' }, 'Este MR não tem lista de elementos. Use "elemento livre" em cada caminhão ou edite o cabeçalho.'),
+      falta.length || marcados.length
+        ? el('button', { type: 'button', class: 'btn', onclick: marcarComLaje }, icone('lista'), 'Serão concretados com a laje')
+        : '',
+      marcados.length
+        ? el('section', { class: 'bloco-na-laje' },
+          el('h2', { class: 'titulo-painel' }, `A concretar com a laje (${marcados.length})`),
+          el('div', { class: 'chips-falta' }, [...marcados].sort(compararNatural).map((e) => el('span', { class: 'chip-el com-laje' }, e))))
+        : '',
       naLaje.size
         ? el('section', { class: 'bloco-na-laje' },
           el('h2', { class: 'titulo-painel' }, `Concretados com a laje (${naLaje.size})`),
@@ -149,6 +158,39 @@ export async function telaMrPilares(id, camId = null) {
         el('button', { type: 'button', class: 'btn', onclick: gerarPdf }, icone('relatorio'), 'Relatório PDF')));
   }
 
+  // ---------- pilares que serão concretados junto com a laje ----------
+  async function marcarComLaje() {
+    const candidatos = naoVinculados(mr, caminhoes).filter((e) => !naLaje.has(e)).sort(compararNatural);
+    let sel = new Set((mr.comLaje || []).filter((e) => candidatos.includes(e)));
+    if (!sel.size) sel = new Set(candidatos); // primeira vez: todos os pendentes marcados
+    const grade = el('div', { class: 'grade-chips' });
+    const info = el('p', { class: 'nota' });
+    const desenhar = () => {
+      info.textContent = `${sel.size} de ${candidatos.length} marcado(s).`;
+      grade.replaceChildren(...candidatos.map((e) => el('button', {
+        type: 'button', class: `chip-el chip-toque${sel.has(e) ? ' sel' : ''}`,
+        onclick: () => { if (sel.has(e)) sel.delete(e); else sel.add(e); desenhar(); },
+      }, e)));
+    };
+    desenhar();
+    const ok = await abrirModal({
+      titulo: 'Serão concretados com a laje',
+      classe: 'modal-largo',
+      corpo: el('div', { class: 'modal-corpo' },
+        el('p', { class: 'nota' }, 'Marque os pilares sem caminhão que vão ser concretados junto com a laje. No relatório eles aparecem como "COM A LAJE" em vez de "SEM CAMINHÃO". Depois, no MR de Laje, use "Trazer pilares pendentes".'),
+        el('div', { class: 'linha-botoes' },
+          el('button', { type: 'button', class: 'btn', onclick: () => { sel = new Set(candidatos); desenhar(); } }, 'Marcar todos'),
+          el('button', { type: 'button', class: 'btn', onclick: () => { sel = new Set(); desenhar(); } }, 'Desmarcar todos')),
+        grade, info),
+      botoes: [{ rotulo: 'Cancelar', valor: false }, { rotulo: 'Salvar', classe: 'btn-primario', valor: true }],
+    });
+    if (!ok) return;
+    mr.comLaje = [...sel];
+    await db.gravar('mrs', mr);
+    desenharPainel();
+    toast(sel.size ? `${sel.size} pilar(es) marcado(s) para concretar com a laje.` : 'Nenhum pilar marcado para a laje.');
+  }
+
   // ---------- volume dos pilares (dimensões × altura fixa) ----------
   function blocoVolumePilares() {
     const p = resumoPilares(mr, caminhoes, concretadosNaLaje);
@@ -161,7 +203,8 @@ export async function telaMrPilares(id, camId = null) {
           caixa('Total', m3(p.total)),
           caixa('Já concretado', m3(p.concretado)),
           caixa('Falta concretar', m3(p.falta), 'caixa-destaque'),
-          caixa('Com medida', `${p.comMedida} de ${mr.elementos.length}`))
+          caixa('Com medida', `${p.comMedida} de ${mr.elementos.length}`),
+          p.comLaje > 0 ? caixa('Com a laje (fora da conta)', m3(p.comLaje)) : '')
         : el('p', { class: 'nota' }, 'Cadastre as medidas para ver o volume total e quanto falta concretar.'),
       p.comMedida && p.semMedida.length
         ? el('p', { class: 'nota' }, `Sem medida (fora da conta): ${p.semMedida.join('; ')}`)
@@ -275,7 +318,8 @@ export async function telaMrPilares(id, camId = null) {
       if (!(c.elementos || []).length) f.push('elementos');
       if (f.length) faltas.push(`Caminhão ${c.item}: falta ${f.join(', ')}`);
     }
-    const nv = naoVinculados(mr, caminhoes).filter((e) => !naLaje.has(e));
+    const comLajeAgora = marcadosComLaje(mr, caminhoes);
+    const nv = naoVinculados(mr, caminhoes).filter((e) => !naLaje.has(e) && !comLajeAgora.includes(e));
     if (nv.length) faltas.push(`Elementos sem caminhão: ${nv.join('; ')}`);
     if (!caminhoes.length) faltas.push('Nenhum caminhão registrado.');
     if (!(await conferirAntesDeConcluir(faltas, abrirModal))) return;
@@ -297,7 +341,7 @@ export async function telaMrPilares(id, camId = null) {
 
   async function gerarPdf() {
     descarregar();
-    await oferecerRelatorio(mr, obra, caminhoes, { naLaje, lajes });
+    await oferecerRelatorio(mr, obra, caminhoes, { naLaje, lajes, comLaje: marcadosComLaje(mr, caminhoes).filter((e) => !naLaje.has(e)) });
   }
 
   atualizarSubtitulo();

@@ -239,7 +239,9 @@ export async function gerarRelatorioMr(mr, obra, caminhoes, extra = {}) {
     const todos = [...new Set([...(mr.elementos || []), ...mapa.keys()])].sort(compararNatural);
     // pilares deste MR concretados depois, junto com uma laje: extra.naLaje = Map(elemento → [caminhões da laje])
     const naLaje = extra.naLaje || new Map();
-    const falta = naoVinculados(mr, ordenados).filter((e) => !naLaje.has(e));
+    // pilares marcados para concretar junto com a laje (ainda sem caminhão): extra.comLaje
+    const comLaje = new Set((extra.comLaje || []).filter((e) => !naLaje.has(e)));
+    const falta = naoVinculados(mr, ordenados).filter((e) => !naLaje.has(e) && !comLaje.has(e));
     if (y > A - 40) { doc.addPage(); y = 18; }
     titulo(doc, 'Rastreamento por elemento', M, y);
     y += 2;
@@ -250,7 +252,7 @@ export async function gerarRelatorioMr(mr, obra, caminhoes, extra = {}) {
       if (daLaje) cs = naLaje.get(e);
       return [
         e,
-        cs.length ? cs.map((c) => (daLaje ? `L${c.item}` : c.item)).join(' + ') : 'SEM CAMINHÃO',
+        cs.length ? cs.map((c) => (daLaje ? `L${c.item}` : c.item)).join(' + ') : (comLaje.has(e) ? 'COM A LAJE' : 'SEM CAMINHÃO'),
         cs.map((c) => (c.nf != null ? c.nf : '—')).join(' + '),
         cs.map((c) => c.bet || '—').join(' + '),
         cs.map((c) => `${c.hi || '—'}–${c.ht || '—'}`).join(' + '),
@@ -288,6 +290,10 @@ export async function gerarRelatorioMr(mr, obra, caminhoes, extra = {}) {
           d.cell.styles.textColor = ALERTA;
           d.cell.styles.fontStyle = 'bold';
         }
+        if (d.section === 'body' && (d.column.index === 1 || d.column.index === 7) && d.cell.raw === 'COM A LAJE') {
+          d.cell.styles.textColor = AZUL;
+          d.cell.styles.fontStyle = 'bold';
+        }
       },
     });
     y = doc.lastAutoTable.finalY + 6;
@@ -306,6 +312,15 @@ export async function gerarRelatorioMr(mr, obra, caminhoes, extra = {}) {
       const t = doc.splitTextToSize(`L = caminhão do MR de Laje${origem ? `: ${origem}` : ''}. Pilar concretado junto com a laje.`, L - 2 * M);
       doc.text(t, M, y);
       y += 4.2 * t.length + 2;
+    }
+    if (comLaje.size) {
+      doc.setFont('OpenSans', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(...AZUL);
+      const lista = todos.filter((e) => comLaje.has(e) && !(mapa.get(e) || []).length);
+      const t = doc.splitTextToSize(`Elementos a concretar junto com a laje (${lista.length}): ${juntarElementos(lista)}`, L - 2 * M);
+      doc.text(t, M, y);
+      y += 4.5 * t.length + 2;
     }
     if (falta.length) {
       doc.setFont('OpenSans', 'bold');

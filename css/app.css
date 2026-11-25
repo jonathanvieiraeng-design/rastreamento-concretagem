@@ -843,3 +843,4 @@ select.campo { -webkit-appearance: none; appearance: none; background-image: url
 .bloco-pilares-laje, .bloco-na-laje { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--borda); padding-top: 12px; }
 .bloco-pilares-laje .btn { min-height: 48px; }
 .cartao-ativo .linha-elementos { flex-direction: column; align-items: stretch; }
+.chip-el.com-laje { background: #E8F0F7; border-color: #9DB8CE; color: var(--primario); font-weight: 700; }

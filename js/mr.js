@@ -189,13 +189,22 @@ export function resumoPilares(mr, caminhoes, outrosConcretados = new Set()) {
   const usados = mapaElementos(caminhoes);
   let total = 0;
   let concretado = 0;
+  let volLaje = 0;
+  const comLaje = new Set(mr.comLaje || []); // marcados para concretar junto com a laje
   const semMedida = [];
   for (const e of mr.elementos || []) {
     const v = volumePilar(dims[e]);
     if (v == null) { semMedida.push(e); continue; }
     total += v;
     if (usados.has(e) || outrosConcretados.has(e)) concretado += v;
+    else if (comLaje.has(e)) volLaje += v;
   }
   const r3 = (x) => Math.round(x * 1000) / 1000;
-  return { total: r3(total), concretado: r3(concretado), falta: r3(total - concretado), comMedida: (mr.elementos || []).length - semMedida.length, semMedida };
+  return { total: r3(total), concretado: r3(concretado), comLaje: r3(volLaje), falta: r3(total - concretado - volLaje), comMedida: (mr.elementos || []).length - semMedida.length, semMedida };
+}
+
+// Pilares sem caminhão que foram marcados para concretar junto com a laje (mr.comLaje, opcional).
+export function marcadosComLaje(mr, caminhoes) {
+  const usados = mapaElementos(caminhoes);
+  return (mr.comLaje || []).filter((e) => (mr.elementos || []).includes(e) && !usados.has(e));
 }
